@@ -1,9 +1,6 @@
 from ..log_entry import LogEntry
-from ..messages.append_entries import (AppendEntriesRequest,
-                                       AppendEntriesSuccess)
-from ..messages.base import SignedMessage
-from ..messages.client_request import ClientRequest
-from ..messages.commit import ACert
+from ..messages import (ACert, AppendEntriesRequest, AppendEntriesSuccess,
+                        ClientRequest, SignedMessage)
 from .normal_operation_base import NormalOperationBase
 from .state import State
 
@@ -20,18 +17,18 @@ class Leader(NormalOperationBase):
             self.log = []
             assert self.applied_c_cert is None
 
-    def on_client_request(self, msg: SignedMessage[ClientRequest]):
-        '''Called when the leader receives a ClientRequest message.'''
+    def on_client_request(self, msg: ClientRequest,
+                          signed: SignedMessage[ClientRequest]):
 
         # Build an AppendEntriesRequest to send to other servers
         prev_ihash = b'0'
         if self.log:  # log not empty
             prev_ihash = self.log[-1].incremental_hash()
-        entry = LogEntry(prev_ihash, msg.message.operation,
-                         msg.message.sender_id)
+        entry = LogEntry(self.term, prev_ihash, msg.operation,
+                         msg.sender_id)
         slot = len(self.log)
         request = AppendEntriesRequest(self.config.server_id, self.term,
-                                       entry, slot, msg)
+                                       entry, slot, signed)
         self.server.messenger.broadcast_server_message(request)
 
         # Add the entry to our own log
@@ -41,11 +38,6 @@ class Leader(NormalOperationBase):
         self._add_append_entries_success(
             SignedMessage(success, self.config.private_key))
         return self
-
-    def on_message(self, msg: SignedMessage) -> State:
-        if isinstance(msg.message, ClientRequest):
-            return self.on_client_request(msg)
-        return super(Leader, self).on_message(msg)
 
     def start(self):
         assert False  # A server is never in this state initially

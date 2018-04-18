@@ -1,4 +1,4 @@
-from ..messages.base import SignedMessage
+from ..messages import SignedMessage
 
 
 class MessengerListener(object):

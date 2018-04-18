@@ -1,11 +1,9 @@
 from ..application import Application
 from ..config import ServerConfig
-from ..messages.base import SignedMessage
-from ..messenger.base import Messenger
-from ..messenger.listener import MessengerListener
-from ..states.abstract import AbstractState
-from ..timeout_manager.base import TimeoutManager
-from ..timeout_manager.listener import TimeoutListener
+from ..messages import SignedMessage
+from ..messengers import Messenger, MessengerListener
+from ..server_states import State
+from ..timeout_managers import TimeoutManager, TimeoutListener
 
 
 class BaseServer(MessengerListener, TimeoutListener):
@@ -17,12 +15,7 @@ class BaseServer(MessengerListener, TimeoutListener):
         self.timeout_manager = timeout_manager
         messenger.add_listener(self)
         timeout_manager.add_listener(self)
-
-        self.state = None  # type: AbstractState
-        if self.config.server_id == 0:
-            self.state = AbstractState()
-        else:
-            self.state = AbstractState()
+        self.state = State.initial_state(self.config)  # type: State
         self.state.start()
 
     def on_message(self, message: SignedMessage) -> None:

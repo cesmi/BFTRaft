@@ -1,5 +1,5 @@
 import asyncio
-from .base import TimeoutManager
+from .timeout_manager import TimeoutManager
 from .listener import TimeoutListener
 
 

@@ -3,9 +3,9 @@ import typing
 import struct
 import pickle
 
-from ..messages.base import Message, ServerMessage, SignedMessage
+from ..messages import Message, ServerMessage, SignedMessage
 from .listener import MessengerListener
-from .base import Messenger
+from .messenger import Messenger
 
 
 class AsyncIoMessenger(Messenger):
@@ -90,7 +90,8 @@ class AsyncIoMessenger(Messenger):
                 # Send queued messages to the node if the connection was successful.
                 for m in self._opening_queues[(addr, port)]:
                     m_raw = pickle.dumps(m)
-                    writer.write(struct.pack('I', len(m_raw)))  # send message size
+                    # send message size
+                    writer.write(struct.pack('I', len(m_raw)))
                     writer.write(m_raw)
 
             except ConnectionError:

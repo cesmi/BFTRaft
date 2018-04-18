@@ -1,4 +1,4 @@
-from ..messages.base import Message, ServerMessage
+from ..messages import Message, ServerMessage
 from .listener import MessengerListener
 
 

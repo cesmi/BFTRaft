@@ -1,11 +1,12 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..')))
 
 from Crypto.PublicKey import RSA
 from bft_raft.application import Application
 from bft_raft.config import ServerConfig
-from bft_raft.servers.asyncio import AsyncIoServer
+from bft_raft.servers import AsyncIoServer
 
 
 class Echo(Application):
@@ -35,7 +36,8 @@ def main():
     server_id = int(sys.argv[1])
     client_pubkeys = read_pubkeys('client', 5)
     server_pubkeys = read_pubkeys('server', 5)
-    privkey = RSA.importKey(open('server%d_private.pem' % server_id, 'r').read())
+    privkey = RSA.importKey(
+        open('server%d_private.pem' % server_id, 'r').read())
     config = ServerConfig(server_id, client_pubkeys, server_pubkeys, privkey)
     app = Echo()
     server = AsyncIoServer(config, app, client_addrs, server_addrs)

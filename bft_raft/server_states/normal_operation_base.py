@@ -1,9 +1,7 @@
 from collections import defaultdict
 
-from ..messages.append_entries import AppendEntriesSuccess
-from ..messages.base import SignedMessage
-from ..messages.client_request import ClientResponse
-from ..messages.commit import ACert, CCert, CommitMessage
+from ..messages import (ACert, AppendEntriesSuccess, CCert, ClientResponse,
+                        CommitMessage, SignedMessage)
 from .state import State
 
 
@@ -32,24 +30,23 @@ class NormalOperationBase(State):
         # Map from slot number -> incremental hash -> server -> message.
         self.append_entries_success = defaultdict(dict)  # type: dict
 
-    def on_append_entries_success(
-            self, message: SignedMessage[AppendEntriesSuccess]) -> State:
-        '''Called when the server receives an AppendEntriesSuccess message.'''
-        if message.message.term != self.term:
+    def on_append_entries_success(self, msg: AppendEntriesSuccess,
+                                  signed: SignedMessage[AppendEntriesSuccess]) -> State:
+        if msg.term != self.term:
             return self
-        self._add_append_entries_success(message)
+        self._add_append_entries_success(signed)
         return self
 
-    def on_commit(self, message: SignedMessage[CommitMessage]) -> State:
-        '''Called when the server receives a CommitMessage.'''
+    def on_commit(self, msg: CommitMessage,
+                  signed: SignedMessage[CommitMessage]) -> State:
 
         # Message must be from current term
-        if message.message.term != self.term:
+        if msg.term != self.term:
             return self
 
         # If A-cert's slot number is lower than our commit index, ignore
         # the message
-        a_cert = message.message.a_cert
+        a_cert = msg.a_cert
         if self.commit_idx is not None and a_cert.slot < self.commit_idx:
             return self
 
@@ -65,8 +62,8 @@ class NormalOperationBase(State):
         assert a_cert.slot == self.commit_idx
 
         # Check if we now have enough commit messages to form a C-certificate.
-        sender = message.message.sender_id
-        self.commit_messages[sender] = message
+        sender = msg.sender_id
+        self.commit_messages[sender] = signed
         if len(self.commit_messages) >= self.config.quorum_size:
             commits = list(self.commit_messages.values())
             c_cert = CCert(commits[0].message.slot,
@@ -91,13 +88,6 @@ class NormalOperationBase(State):
                 self.applied_c_cert = c_cert
         return self
 
-    def on_message(self, msg: SignedMessage) -> State:
-        if isinstance(msg.message, AppendEntriesSuccess):
-            return self.on_append_entries_success(msg)
-        elif isinstance(msg.message, CommitMessage):
-            return self.on_commit(msg)
-        return super(NormalOperationBase, self).on_message(msg)
-
     def on_timeout(self, context: object) -> State:
         return self
 
@@ -120,7 +110,8 @@ class NormalOperationBase(State):
         # Form an A-cert if possible
         num_successes = len(self.append_entries_success[slot][inc_hash])
         if num_successes >= self.config.quorum_size:
-            responses = list(self.append_entries_success[slot][inc_hash].values())
+            responses = list(
+                self.append_entries_success[slot][inc_hash].values())
             a_cert = ACert(slot, inc_hash, responses)
             self._increase_commit_index(a_cert)
 

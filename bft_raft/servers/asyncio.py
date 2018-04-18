@@ -1,8 +1,8 @@
 import asyncio
 from ..application import Application
 from ..config import ServerConfig
-from ..messenger.asyncio import AsyncIoMessenger
-from ..timeout_manager.asyncio import AsyncIoTimeoutManager
+from ..messengers import AsyncIoMessenger
+from ..timeout_managers import AsyncIoTimeoutManager
 from .base import BaseServer
 
 
