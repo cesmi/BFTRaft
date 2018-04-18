@@ -1,3 +1,4 @@
+import pickle
 from Crypto.Hash import SHA256
 
 
@@ -9,4 +10,4 @@ class LogEntry(object):
         self.client_id = client_id
 
     def incremental_hash(self) -> bytes:
-        return SHA256.new(self.prev_incremental_hash).digest()
+        return SHA256.new(pickle.dumps(self)).digest()
