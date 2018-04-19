@@ -45,6 +45,11 @@ class Candidate(State):
             pl_state = PreLeader(self.term, proof, self)
             final_state = pl_state.check_if_catchup_necessary()
             return final_state
+
+        # If this was our (f + 1)th vote, send a vote request
+        elif len(self.votes_for_term) == self.config.f + 1:
+            print('Received f + 1 votes, sending vote req')
+            self.send_vote_request()
         return self
 
     def start(self):

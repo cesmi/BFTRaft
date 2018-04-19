@@ -1,6 +1,7 @@
+import typing
 from ..application import Application
 from ..config import ServerConfig
-from ..messengers.memory_queue import MemoryQueueMessenger
+from ..messengers.memory_queue import MemoryQueueMessenger, SentMessage
 from ..timeout_managers.memory_queue import MemoryQueueTimeoutManager
 from .base import BaseServer
 
@@ -20,10 +21,10 @@ class MemoryQueueServer(BaseServer):
         self.memqueue_messenger = messenger
         self.memqueue_to_manager = timeout_manager
 
-    def get_sent_message(self):
+    def get_sent_message(self) -> SentMessage:
         '''Pops a sent message off the front of the queue and returns it.'''
         return self.memqueue_messenger.get_message()
 
-    def get_timeout(self):
+    def get_timeout(self) -> typing.Tuple[float, object]:
         '''Pops a set timeout off the front of the queue and returns it.'''
         return self.memqueue_to_manager.get_timeout()

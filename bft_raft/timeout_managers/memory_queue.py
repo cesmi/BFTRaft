@@ -1,3 +1,4 @@
+import typing
 from operator import itemgetter
 from .timeout_manager import TimeoutManager
 
@@ -10,7 +11,7 @@ class MemoryQueueTimeoutManager(TimeoutManager):
         super(MemoryQueueTimeoutManager, self).__init__()
         self._timeouts = []  # type: ignore
 
-    def get_timeout(self):
+    def get_timeout(self) -> typing.Tuple[float, object]:
         '''Pops timeout off the front of the queue and returns it.'''
         if not self._timeouts:
             return None

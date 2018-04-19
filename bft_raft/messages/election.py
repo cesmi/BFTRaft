@@ -44,7 +44,7 @@ class ElectedMessage(ServerMessage):
         '''Returns the commit index of the new leader based on the
         view numbers/slot numbers of the A-certificates contained in the
         election quorum. Also returns the corresponding A-certificate.'''
-        return (0, None)  # TODO
+        return (None, None)  # TODO
 
 
 class ElectionProofRequest(ServerMessage):

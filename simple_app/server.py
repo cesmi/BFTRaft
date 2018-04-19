@@ -9,9 +9,9 @@ from bft_raft.config import ServerConfig
 from bft_raft.servers.asyncio import AsyncIoServer
 
 
-class Echo(Application):
-    def handle_request(self, operation: str, client_id: int) -> str:
-        print('OPERATION: %s' % operation)
+class PrintAndEcho(Application):
+    def handle_request(self, operation: bytes, client_id: int) -> bytes:
+        # print('OPERATION: %s' % operation)
         return operation
 
 
@@ -37,7 +37,7 @@ def main():
     privkey = RSA.importKey(
         open('server%d_private.pem' % server_id, 'r').read())
     config = ServerConfig(server_id, client_pubkeys, server_pubkeys, privkey)
-    app = Echo()
+    app = PrintAndEcho()
     server = AsyncIoServer(config, app, client_addrs, server_addrs)
     server.run()
 
