@@ -15,7 +15,7 @@ class BaseServer(MessengerListener, TimeoutListener):
         self.timeout_manager = timeout_manager
         messenger.add_listener(self)
         timeout_manager.add_listener(self)
-        self.state = State.initial_state(self.config)  # type: State
+        self.state = self.initial_state()
         self.state.start()
 
     def on_message(self, message: SignedMessage) -> None:
@@ -23,3 +23,10 @@ class BaseServer(MessengerListener, TimeoutListener):
 
     def on_timeout(self, context: object) -> None:
         self.state = self.state.on_timeout(context)
+
+    def initial_state(self) -> State:
+        from ..server_states import Candidate, Voter
+        if self.config.server_id == 0:
+            return Candidate(0, {}, self, None)
+        else:
+            return Voter(0, self, None)

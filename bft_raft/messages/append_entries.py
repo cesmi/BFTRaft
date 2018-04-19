@@ -1,16 +1,30 @@
-from .base import ServerMessage, SignedMessage
-from .client_request import ClientRequest
+from typing import List
+
+from ..config import BaseConfig
 from ..log_entry import LogEntry
+from .base import ServerMessage
+from .verify_entries import verify_entries
 
 
 class AppendEntriesRequest(ServerMessage):
     def __init__(self, sender_id: int, term: int,
-                 entry: LogEntry, slot: int,
-                 client_request: SignedMessage[ClientRequest]) -> None:
+                 entries: List[LogEntry], first_slot: int) -> None:
         super(AppendEntriesRequest, self).__init__(sender_id, term)
-        self.entry = entry
-        self.slot = slot
-        self.client_request = client_request
+        self.entries = entries
+        self.first_slot = first_slot
+
+    @property
+    def last_slot(self):
+        return self.first_slot + len(self.entries) - 1
+
+    def verify(self, config: BaseConfig) -> bool:
+        if not isinstance(self.first_slot, int) or not isinstance(self.entries, list):
+            return False
+        if self.first_slot < 0:
+            return False
+        if not verify_entries(self.entries, config):
+            return False
+        return super(AppendEntriesRequest, self).verify(config)
 
 
 class AppendEntriesSuccess(ServerMessage):
@@ -19,3 +33,10 @@ class AppendEntriesSuccess(ServerMessage):
         super(AppendEntriesSuccess, self).__init__(sender_id, term)
         self.incremental_hash = incremental_hash
         self.slot = slot
+
+    def verify(self, config: BaseConfig) -> bool:
+        if not isinstance(self.incremental_hash, bytes):
+            return False
+        if not isinstance(self.slot, int) or self.slot < 0:
+            return False
+        return super(AppendEntriesSuccess, self).verify(config)

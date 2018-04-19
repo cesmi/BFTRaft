@@ -7,53 +7,71 @@ from .state import State
 class Follower(NormalOperationBase):
     def __init__(self, term: int, leader_commit_idx: int,
                  leader_a_cert: ACert, copy_from: State) -> None:
-        super(Follower, self).__init__(
-            term, leader_commit_idx, leader_a_cert, copy_from)
+        super(Follower, self).__init__(term, copy_from)
         self.leader_commit_idx = leader_commit_idx
+        self.leader_a_cert = leader_a_cert
+        self.latest_slot_for_current_term = None  # type: int
 
     def on_append_entries_request(self, msg: AppendEntriesRequest,
                                   signed: SignedMessage[AppendEntriesRequest]) -> State:
 
         # Sender must be the leader of the current term.
         if msg.term != self.term:
+            if msg.term > self.term:
+                self._request_election_proof(msg.term)
             return self
         if msg.sender_id % self.config.num_servers != msg.term:
             return self
 
-        # Verify that operation was sent by client
-        client_id = msg.client_request.message.sender_id
-        if not msg.client_request.verify(
-                self.config.client_public_keys[client_id]):
-            return self
-        client_op = msg.client_request.message.operation
-        if not client_op == msg.entry.operation:
+        # If no entries sent do nothing
+        # (we'll update heartbeat time here in the future)
+        if not msg.entries:
             return self
 
         # Check that message's incremental hash matches ours
-        entry = msg.entry
-        slot = msg.slot
-        if len(self.log) < slot:
+        first_entry = msg.entries[0]
+        first_slot = msg.first_slot
+        last_slot = msg.last_slot
+        if len(self.log) < first_slot:
+            # TODO: respond to the leader to indicate we are behind
             return self
-        if entry.prev_incremental_hash != self.log[slot].prev_incremental_hash:
+        if first_slot > 0 and first_entry.prev_incremental_hash != \
+                self.log[first_slot - 1].incremental_hash():
             return self
 
-        # Check that we do not already have an entry in the slot for the
+        # At least one slot must be greater than leader commit idx
+        if last_slot <= self.leader_commit_idx:
+            return self
+
+        # If leader commit index is in range [first_slot, last_slot], check
+        # that entries conform to the leader a cert
+        # (by checking incremental hash at leader_commit_idx)
+        if first_slot <= self.leader_commit_idx \
+                and self.leader_commit_idx <= last_slot:
+            entry_idx = self.leader_commit_idx - first_slot
+            if msg.entries[entry_idx].incremental_hash != \
+                    self.leader_a_cert.incremental_hash:
+                return self
+
+        # Don't re-append at slots where we already have an entry for the
         # current term
-        if len(self.log) > slot and self.log[slot].term >= msg.term:
-            return self
+        first_to_append = max([self.latest_slot_for_current_term + 1,
+                               first_slot])
+        first_idx = first_to_append - first_slot
+        assert first_idx >= 0
 
-        # Verify that slot number is greater than leader commit index
-        if slot <= self.leader_commit_idx:
-            return self
-
-        # Append entry to log and broadcast success message
-        self.log = self.log[:slot] + [entry]
+        # Append the entries and broadcast response
+        self.log = self.log[:first_to_append] + msg.entries[first_idx:]
+        self.log = self.log[:first_slot] + msg.entries
         resp = AppendEntriesSuccess(
             self.config.server_id, self.term,
-            slot, self.log[-1].incremental_hash())
+            last_slot, self.log[-1].incremental_hash())
         self.server.messenger.broadcast_server_message(resp)
         self._add_append_entries_success(
             SignedMessage(resp, self.config.private_key))
+
+        if self.log:
+            self.latest_slot_for_current_term = len(self.log) - 1
         return self
 
     def on_timeout(self, context: object) -> State:
