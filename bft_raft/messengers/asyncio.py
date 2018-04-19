@@ -1,13 +1,11 @@
 import asyncio
 import pickle
 import struct
-import traceback
 import typing
 from collections import defaultdict
 
 from ..config import BaseConfig
 from ..messages import Message, ServerMessage, SignedMessage
-from .listener import MessengerListener
 from .messenger import Messenger
 
 
@@ -21,13 +19,12 @@ class AsyncIoMessenger(Messenger):
                  node_id: int,
                  is_client: bool,
                  loop: asyncio.AbstractEventLoop) -> None:
-        self._config = config
+        super(AsyncIoMessenger, self).__init__(config)
         self._clients = clients  # map from client id to (ip, port)
         self._servers = servers  # map from server id to (ip, port)
         self._node_id = node_id
         self._is_client = is_client
         self._loop = loop
-        self._listeners = []  # type: typing.List[MessengerListener]
         self._started_server = False  # Whether start_server has been called
         self._writers = defaultdict(list)  # type: ignore
         self._opening_queues = defaultdict(lambda: None)  # type: ignore
@@ -49,9 +46,6 @@ class AsyncIoMessenger(Messenger):
                 my_port,
                 loop=self._loop))
 
-    def add_listener(self, listener: MessengerListener):
-        self._listeners.append(listener)
-
     def send_server_message(self, server_id: int, message: ServerMessage) -> None:
         addr = self._servers[server_id][0]
         port = self._servers[server_id][1]
@@ -72,7 +66,7 @@ class AsyncIoMessenger(Messenger):
         # Remove any closed StreamWriters from this node's writers list
         self._writers[(addr, port)] = [
             w for w in self._writers[(addr, port)] if not w.transport.is_closing()]
-        signed = SignedMessage(message, self._config.private_key)
+        signed = SignedMessage(message, self.config.private_key)
 
         # If there are any left in the writers list, send the message
         if self._writers[(addr, port)]:
@@ -126,27 +120,7 @@ class AsyncIoMessenger(Messenger):
             if not isinstance(signed, SignedMessage):
                 break
 
-            # Verify signature
-            if signed.from_client:
-                if not signed.sender_id in self._config.client_public_keys:
-                    break
-                pubkey = self._config.client_public_keys[signed.sender_id]
-            else:
-                if not signed.sender_id in self._config.server_public_keys:
-                    break
-                pubkey = self._config.server_public_keys[signed.sender_id]
-            msg = signed.get_message(pubkey, self._config)
-
-            # dispatch to listeners
-            fmt = (msg.__class__.__name__, signed.sender_id)
-            if signed.from_client:
-                print('Received %s from client %d' % fmt)
-            else:
-                print('Received %s from server %d' % fmt)
-            for l in self._listeners:
-                try:
-                    l.on_message(msg, signed)
-                except:  # pylint:disable=W0702
-                    print('on_message callback raised exception')
-                    print(traceback.format_exc())
+            # Verify signature / message validity and invoke callback
+            if not self.verify_and_deliver(signed):
+                break
         writer.close()
