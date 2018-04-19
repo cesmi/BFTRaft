@@ -18,6 +18,11 @@ class ClientRequest(Message):
             return False
         return super(ClientRequest, self).verify(config)
 
+    def update_hash(self, h) -> None:
+        h.update(self.int_to_bytes(self.seqno))
+        h.update(self.operation)
+        super(ClientRequest, self).update_hash(h)
+
 
 class ClientResponse(Message):
     '''Sent to the client after an operation is executed.'''
@@ -37,6 +42,12 @@ class ClientResponse(Message):
         if not isinstance(self.result, bytes):
             return False
         return super(ClientResponse, self).verify(config)
+
+    def update_hash(self, h) -> None:
+        h.update(self.int_to_bytes(self.requester))
+        h.update(self.int_to_bytes(self.seqno))
+        h.update(self.result)
+        super(ClientResponse, self).update_hash(h)
 
 
 class ClientRequestFailure(Message):
@@ -58,3 +69,9 @@ class ClientRequestFailure(Message):
         if not isinstance(self.result, bytes):
             return False
         return super(ClientRequestFailure, self).verify(config)
+
+    def update_hash(self, h) -> None:
+        h.update(self.int_to_bytes(self.requester))
+        h.update(self.int_to_bytes(self.max_seqno))
+        h.update(self.result)
+        super(ClientRequestFailure, self).update_hash(h)

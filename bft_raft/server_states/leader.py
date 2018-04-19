@@ -24,8 +24,7 @@ class Leader(NormalOperationBase):
         prev_ihash = b'0'
         if self.log:  # log not empty
             prev_ihash = self.log[-1].incremental_hash()
-        entry = LogEntry(self.term, prev_ihash, signed,
-                         msg.sender_id, msg.seqno, msg.operation)
+        entry = LogEntry(self.term, prev_ihash, signed)
         slot = len(self.log)
         request = AppendEntriesRequest(self.config.server_id, self.term,
                                        [entry], slot)

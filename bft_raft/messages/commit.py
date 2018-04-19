@@ -3,17 +3,18 @@ from typing import List
 from ..config import BaseConfig
 from .append_entries import AppendEntriesSuccess
 from .base import ServerMessage, SignedMessage
+from .hashable import Hashable
 
 
-class Cert(object):
+class Cert(Hashable):
     '''Certificate base class.'''
 
     def __init__(self, slot: int, incremental_hash: bytes, term: int,
                  msgs: List[SignedMessage[ServerMessage]]) -> None:
         self.slot = slot
+        self.term = term
         self.incremental_hash = incremental_hash
         self.msgs = msgs
-        self.term = term
 
     def verify(self, config: BaseConfig) -> bool:
         if not isinstance(self.slot, int) or self.slot < 0:
@@ -42,6 +43,13 @@ class Cert(object):
                 return False
         return True
 
+    def update_hash(self, h) -> None:
+        h.update(self.int_to_bytes(self.slot))
+        h.update(self.int_to_bytes(self.term))
+        h.update(self.incremental_hash)
+        for msg in self.msgs:
+            h.update(msg.hash())
+
 
 class ACert(Cert):
     '''A-certificate: contains 2f + 1 AppendEntriesSuccess messages.'''
@@ -55,12 +63,11 @@ class ACert(Cert):
         if not super(ACert, self).verify(config):
             return False
         for signed in self.msgs:
-            msg = signed.get_message(config)
-            if not isinstance(msg, AppendEntriesSuccess):
+            if not isinstance(signed.message, AppendEntriesSuccess):
                 return False
-            if not msg.incremental_hash == self.incremental_hash:
+            if not signed.message.incremental_hash == self.incremental_hash:
                 return False
-            if not msg.slot == self.slot:
+            if not signed.message.slot == self.slot:
                 return False
         return True
 
@@ -71,7 +78,15 @@ class CommitMessage(ServerMessage):
     def __init__(self, sender_id: int, term: int, a_cert: ACert) -> None:
         super(CommitMessage, self).__init__(sender_id, term)
         self.a_cert = a_cert
-        self.incremental_hash = a_cert.incremental_hash
+
+    def update_hash(self, h) -> None:
+        h.update(self.a_cert.hash())
+        h.update(self.incremental_hash)
+        super(CommitMessage, self).update_hash(h)
+
+    @property
+    def incremental_hash(self) -> bytes:
+        return self.a_cert.incremental_hash
 
 
 class CCert(Cert):
@@ -86,11 +101,10 @@ class CCert(Cert):
         if not super(CCert, self).verify(config):
             return False
         for signed in self.msgs:
-            msg = signed.get_message(config)
-            if not isinstance(msg, CommitMessage):
+            if not isinstance(signed.message, CommitMessage):
                 return False
-            if not msg.a_cert.incremental_hash == self.incremental_hash:
+            if not signed.message.incremental_hash == self.incremental_hash:
                 return False
-            if not msg.a_cert.slot == self.slot:
+            if not signed.message.a_cert.slot == self.slot:
                 return False
         return True

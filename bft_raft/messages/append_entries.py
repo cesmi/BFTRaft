@@ -25,6 +25,12 @@ class AppendEntriesRequest(ServerMessage):
             return False
         return super(AppendEntriesRequest, self).verify(config)
 
+    def update_hash(self, h) -> None:
+        for entry in self.entries:
+            h.update(entry.incremental_hash())
+        h.update(self.int_to_bytes(self.first_slot))
+        super(AppendEntriesRequest, self).update_hash(h)
+
 
 class AppendEntriesSuccess(ServerMessage):
     def __init__(self, sender_id: int, term: int,
@@ -39,3 +45,8 @@ class AppendEntriesSuccess(ServerMessage):
         if not isinstance(self.slot, int) or self.slot < 0:
             return False
         return super(AppendEntriesSuccess, self).verify(config)
+
+    def update_hash(self, h) -> None:
+        h.update(self.incremental_hash)
+        h.update(self.int_to_bytes(self.slot))
+        super(AppendEntriesSuccess, self).update_hash(h)

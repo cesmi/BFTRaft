@@ -1,28 +1,37 @@
-import pickle
 from typing import List
-
-from Crypto.Hash import SHA256
 
 from ..config import BaseConfig
 from .base import SignedMessage
 from .client_request import ClientRequest
+from .hashable import Hashable
 
 
-class LogEntry(object):
+class LogEntry(Hashable):
     def __init__(self, term: int, prev_incremental_hash: bytes,
-                 client_request: SignedMessage[ClientRequest],
-                 client_id: int, seqno: int,
-                 operation: bytes) -> None:
+                 client_request: SignedMessage[ClientRequest]) -> None:
         self.term = term
         self.prev_incremental_hash = prev_incremental_hash
-        self.signed = client_request
-
-        self.client_id = client_id
-        self.seqno = seqno
-        self.operation = operation
+        self.request = client_request
 
     def incremental_hash(self) -> bytes:
-        return SHA256.new(pickle.dumps(self)).digest()
+        return self.hash()
+
+    @property
+    def client_id(self):
+        return self.request.sender_id
+
+    @property
+    def seqno(self):
+        return self.request.message.seqno
+
+    @property
+    def operation(self):
+        return self.request.operation
+
+    def update_hash(self, h) -> None:
+        h.update(self.int_to_bytes(self.term))
+        h.update(self.prev_incremental_hash)
+        h.update(self.request.hash())
 
     def verify(self, config: BaseConfig) -> bool:
         return True  # TODO

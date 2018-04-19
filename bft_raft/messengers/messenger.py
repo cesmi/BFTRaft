@@ -37,9 +37,9 @@ class Messenger(object):
         on all attached listeners. Returns true on success, false, on failure.'''
 
         # Verify signature
-        msg = signed.get_message(self.config)
-        if msg is None:
+        if signed.verify(self.config) is None:
             return False
+        msg = signed.message
         print('Received %s from %d' % (msg.__class__.__name__, msg.sender_id))
 
         # dispatch to listeners

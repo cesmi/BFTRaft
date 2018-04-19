@@ -14,6 +14,11 @@ class VoteMessage(ServerMessage):
     def verify(self, config: BaseConfig) -> bool:
         return True  # TODO
 
+    def update_hash(self, h) -> None:
+        # TODO
+        # super(, self).update_hash(h)
+        pass
+
 
 class VoteRequest(ServerMessage):
     '''Sent by a candidate to clients after receiving f + 1
@@ -27,6 +32,11 @@ class VoteRequest(ServerMessage):
     def verify(self, config: BaseConfig) -> bool:
         return True  # TODO
 
+    def update_hash(self, h) -> None:
+        # TODO
+        # super(, self).update_hash(h)
+        pass
+
 
 class ElectedMessage(ServerMessage):
     '''Sent by a new leader to prove its election. The votes
@@ -39,6 +49,11 @@ class ElectedMessage(ServerMessage):
 
     def verify(self, config: BaseConfig) -> bool:
         return True  # TODO
+
+    def update_hash(self, h) -> None:
+        # TODO
+        # super(, self).update_hash(h)
+        pass
 
     def leader_commit_idx(self) -> Tuple[int, ACert]:
         '''Returns the commit index of the new leader based on the
@@ -69,6 +84,11 @@ class CatchupRequest(ServerMessage):
             return False
         return super(CatchupRequest, self).verify(config)
 
+    def update_hash(self, h) -> None:
+        # TODO
+        # super(, self).update_hash(h)
+        pass
+
 
 class CatchupResponse(ServerMessage):
     def __init__(self, sender_id: int, term: int,
@@ -87,3 +107,8 @@ class CatchupResponse(ServerMessage):
         if not verify_entries(self.entries, config):
             return False
         return super(CatchupResponse, self).verify(config)
+
+    def update_hash(self, h) -> None:
+        # TODO
+        # super(, self).update_hash(h)
+        pass
