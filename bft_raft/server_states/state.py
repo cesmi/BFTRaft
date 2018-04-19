@@ -10,7 +10,7 @@ from ..messages import (ACert, AppendEntriesRequest,  # pylint:disable=W0611
 
 if False:  # pylint:disable=W0125
     # (just for type checking; if statement avoids circular import)
-    from ..servers.base import BaseServer
+    from ..servers.base import BaseServer  # pylint:disable=W0611
 
 
 class State(object):
@@ -58,7 +58,7 @@ class State(object):
         elif isinstance(msg, VoteMessage):
             return self.on_vote(msg, signed)
         elif isinstance(msg, VoteRequest):
-            return self.on_election_proof_request(msg, signed)
+            return self.on_vote_request(msg, signed)
         elif isinstance(msg, ElectedMessage):
             return self.on_elected(msg, signed)
         elif isinstance(msg, ElectionProofRequest):

@@ -12,7 +12,10 @@ class Leader(NormalOperationBase):
         super(Leader, self).__init__(term, copy_from)
         self.election_proof = election_proof
         commit_idx, _ = election_proof.leader_commit_idx()
-        assert commit_idx == len(self.log) - 1
+        if commit_idx is not None:
+            assert commit_idx == len(self.log) - 1
+        else:
+            assert not self.log  # empty log
 
     def on_client_request(self, msg: ClientRequest,
                           signed: SignedMessage[ClientRequest]):
@@ -32,7 +35,7 @@ class Leader(NormalOperationBase):
         success = AppendEntriesSuccess(self.config.server_id, self.term, slot,
                                        entry.incremental_hash())
         self._add_append_entries_success(
-            SignedMessage(success, self.config.private_key))
+            success, SignedMessage(success, self.config.private_key))
         return self
 
     def on_election_proof_request(self, msg: ElectionProofRequest,
