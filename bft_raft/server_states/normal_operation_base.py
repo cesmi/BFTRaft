@@ -142,12 +142,12 @@ class NormalOperationBase(State):
             self._add_commit(c, signed)
 
         # clean up self.future_commits
-        for slot in self.future_commits.keys():
+        for slot in list(self.future_commits):
             if slot <= a_cert.slot:
                 del self.future_commits[slot]
 
         # Clean up self.append_entries_success
-        for slot in self.append_entries_success.keys():
+        for slot in list(self.append_entries_success):
             if slot <= a_cert.slot:
                 del self.append_entries_success[slot]
 
