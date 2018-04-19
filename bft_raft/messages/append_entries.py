@@ -1,9 +1,8 @@
 from typing import List
 
 from ..config import BaseConfig
-from ..log_entry import LogEntry
+from .log_entry import LogEntry, verify_entries
 from .base import ServerMessage
-from .verify_entries import verify_entries
 
 
 class AppendEntriesRequest(ServerMessage):

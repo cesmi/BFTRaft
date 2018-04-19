@@ -1,5 +1,5 @@
 from ..messages import VoteMessage
-from ..servers import BaseServer
+from ..servers.base import BaseServer
 from .state import State
 
 

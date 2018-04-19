@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(
 from Crypto.PublicKey import RSA
 from bft_raft.application import Application
 from bft_raft.config import ServerConfig
-from bft_raft.servers import AsyncIoServer
+from bft_raft.servers.asyncio import AsyncIoServer
 
 
 class Echo(Application):

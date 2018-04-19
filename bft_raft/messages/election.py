@@ -2,8 +2,7 @@ from typing import List, Tuple
 from .base import ServerMessage, SignedMessage
 from .commit import ACert
 from ..config import BaseConfig
-from ..log_entry import LogEntry
-from .verify_entries import verify_entries
+from .log_entry import LogEntry, verify_entries
 
 
 class VoteMessage(ServerMessage):

@@ -2,7 +2,9 @@ import asyncio
 import typing
 import struct
 import pickle
+from collections import defaultdict
 
+from ..config import BaseConfig
 from ..messages import Message, ServerMessage, SignedMessage
 from .listener import MessengerListener
 from .messenger import Messenger
@@ -11,25 +13,33 @@ from .messenger import Messenger
 class AsyncIoMessenger(Messenger):
     '''asyncio implementation of Messenger.'''
 
-    def __init__(self, clients: typing.Dict[int, typing.Tuple[str, int, object]],
-                 servers: typing.Dict[int, typing.Tuple[str, int, object]],
-                 server_id: int, private_key,
+    def __init__(self,
+                 config: BaseConfig,
+                 clients: typing.Dict[int, typing.Tuple[str, int]],
+                 servers: typing.Dict[int, typing.Tuple[str, int]],
+                 node_id: int,
+                 is_client: bool,
                  loop: asyncio.AbstractEventLoop) -> None:
-        self._clients = clients  # map from client id to (ip, port, public_key)
-        self._servers = servers  # map from server id to (ip, port, public_key)
-        self._server_id = server_id
-        self._private_key = private_key
+        self._config = config
+        self._clients = clients  # map from client id to (ip, port)
+        self._servers = servers  # map from server id to (ip, port)
+        self._node_id = node_id
+        self._is_client = is_client
         self._loop = loop
-        self._listeners = []  # type: list
+        self._listeners = []  # type: typing.List[MessengerListener]
         self._started_server = False  # Whether start_server has been called
-        self._writers = {}  # type: ignore
-        self._opening_queues = {}  # type: ignore
+        self._writers = defaultdict(list)  # type: ignore
+        self._opening_queues = defaultdict(lambda: None)  # type: ignore
 
     def start_server(self) -> None:
         '''Start listening for incoming messages.'''
         assert not self._started_server
-        my_addr = self._servers[self._server_id][0]
-        my_port = self._servers[self._server_id][1]
+        if self._is_client:
+            my_addr = self._clients[self._node_id][0]
+            my_port = self._clients[self._node_id][1]
+        else:
+            my_addr = self._servers[self._node_id][0]
+            my_port = self._servers[self._node_id][1]
         self._loop.create_task(
             asyncio.start_server(
                 lambda r, w: self._loop.create_task(
@@ -53,14 +63,15 @@ class AsyncIoMessenger(Messenger):
 
     def broadcast_server_message(self, message) -> None:
         for i in range(0, len(self._servers)):
-            if i != self._server_id:
-                self.send_server_message(i, message)
+            if not self._is_client and i == self._node_id:
+                continue
+            self.send_server_message(i, message)
 
     async def _send_message(self, addr: str, port: int, message: Message) -> None:
         # Remove any closed StreamWriters from this node's writers list
         self._writers[(addr, port)] = [
             w for w in self._writers[(addr, port)] if not w.transport.is_closing()]
-        msg = SignedMessage(message, self._private_key)
+        msg = SignedMessage(message, self._config.private_key)
 
         # If there are any left in the writers list, send the message
         if self._writers[(addr, port)]:
@@ -115,10 +126,10 @@ class AsyncIoMessenger(Messenger):
                 # Verify signature
                 from_client = msg.message.from_client
                 if from_client:
-                    pubkey = self._clients[msg.message.sender_id][2]
+                    pubkey = self._config.client_public_keys[msg.message.sender_id]
                 else:
-                    pubkey = self._servers[msg.message.sender_id][2]
-                if not msg.verify(pubkey):
+                    pubkey = self._config.server_public_keys[msg.message.sender_id]
+                if not msg.verify(pubkey, self._config):
                     raise RuntimeError
 
                 # dispatch to listeners

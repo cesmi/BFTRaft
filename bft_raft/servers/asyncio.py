@@ -1,8 +1,8 @@
 import asyncio
 from ..application import Application
 from ..config import ServerConfig
-from ..messengers import AsyncIoMessenger
-from ..timeout_managers import AsyncIoTimeoutManager
+from ..messengers.asyncio import AsyncIoMessenger
+from ..timeout_managers.asyncio import AsyncIoTimeoutManager
 from .base import BaseServer
 
 
@@ -12,16 +12,8 @@ class AsyncIoServer(BaseServer):
     def __init__(self, config: ServerConfig, application: Application,
                  client_addrs: dict, server_addrs: dict) -> None:
         loop = asyncio.get_event_loop()
-        clients = {}
-        servers = {}
-        for client_id, pubkey in config.client_public_keys.items():
-            addr = client_addrs[client_id]
-            clients[client_id] = (client_addrs[0], client_addrs[1], pubkey)
-        for server_id, pubkey in config.server_public_keys.items():
-            addr = server_addrs[server_id]
-            servers[server_id] = (server_addrs[0], server_addrs[1], pubkey)
-        messenger = AsyncIoMessenger(clients, servers, config.server_id,
-                                     config.private_key, loop)
+        messenger = AsyncIoMessenger(config, client_addrs, server_addrs,
+                                     config.server_id, False, loop)
         timeout_manager = AsyncIoTimeoutManager(loop)
         super(AsyncIoServer, self).__init__(config, application,
                                             messenger, timeout_manager)

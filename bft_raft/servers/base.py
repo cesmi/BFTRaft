@@ -1,9 +1,11 @@
 from ..application import Application
 from ..config import ServerConfig
 from ..messages import SignedMessage
-from ..messengers import Messenger, MessengerListener
-from ..server_states import State
-from ..timeout_managers import TimeoutManager, TimeoutListener
+from ..messengers.listener import MessengerListener
+from ..messengers.messenger import Messenger
+from ..server_states.state import State
+from ..timeout_managers.listener import TimeoutListener
+from ..timeout_managers.timeout_manager import TimeoutManager
 
 
 class BaseServer(MessengerListener, TimeoutListener):
@@ -25,7 +27,8 @@ class BaseServer(MessengerListener, TimeoutListener):
         self.state = self.state.on_timeout(context)
 
     def initial_state(self) -> State:
-        from ..server_states import Candidate, Voter
+        from ..server_states.candidate import Candidate
+        from ..server_states.voter import Voter
         if self.config.server_id == 0:
             return Candidate(0, {}, self, None)
         else:

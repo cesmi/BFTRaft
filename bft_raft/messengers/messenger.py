@@ -13,7 +13,7 @@ class Messenger(object):
         raise NotImplementedError
 
     def send_server_message(self, server_id: int, message: ServerMessage) -> None:
-        '''Signs a message and sends it to another server.'''
+        '''Signs a message and sends it to a server.'''
         raise NotImplementedError
 
     def send_client_message(self, client_id: int, message: Message) -> None:

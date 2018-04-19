@@ -1,8 +1,7 @@
 from collections import defaultdict
-from typing import Dict, List  # pylint:disable=W0611
+from typing import Dict, List, TypeVar  # pylint:disable=W0611
 from ..config import ServerConfig
-from ..log_entry import LogEntry  # pylint:disable=W0611
-from ..messages import ACert, CCert  # pylint:disable=W0611
+from ..messages import ACert, CCert, LogEntry  # pylint:disable=W0611
 from ..messages import (AppendEntriesRequest, AppendEntriesSuccess, ClientRequest,
                         CommitMessage, ElectedMessage,
                         SignedMessage, VoteMessage, VoteRequest,
@@ -11,11 +10,11 @@ from ..messages import (AppendEntriesRequest, AppendEntriesSuccess, ClientReques
 
 if False:  # pylint:disable=W0125
     # (just for type checking; if statement avoids circular import)
-    from ..servers import BaseServer
+    from ..servers.base import BaseServer
 
 
 class State(object):
-    def __init__(self, server: BaseServer, copy_from: State = None,
+    def __init__(self, server: 'BaseServer', copy_from: 'State' = None,
                  term: int = None) -> None:
         self.server = server  # type: BaseServer
         self.log = []  # type: List[LogEntry]
@@ -46,7 +45,7 @@ class State(object):
         '''Performs any actions a server in this state should perform on startup.'''
         raise NotImplementedError
 
-    def on_message(self, msg: SignedMessage) -> State:
+    def on_message(self, msg: SignedMessage) -> 'State':
         '''Invokes the appropriate callback for msg. Returns resulting state.'''
         m = msg.message  # unsigned
         if isinstance(m, AppendEntriesRequest):
@@ -61,32 +60,32 @@ class State(object):
             assert False, 'unhandled message type'
 
     def on_append_entries_request(self, msg: AppendEntriesRequest,
-                                  signed: SignedMessage[AppendEntriesRequest]) -> State:
+                                  signed: SignedMessage[AppendEntriesRequest]) -> 'State':
         # request proof of election if sender claims higher term
         if msg.term > self.term:
             self._request_election_proof(msg.term)
         return self
 
     def on_append_entries_success(self, msg: AppendEntriesSuccess,
-                                  signed: SignedMessage[AppendEntriesSuccess]) -> State:
+                                  signed: SignedMessage[AppendEntriesSuccess]) -> 'State':
         # request proof of election if sender claims higher term
         if msg.term > self.term:
             self._request_election_proof(msg.term)
         return self
 
     def on_client_request(self, msg: ClientRequest,
-                          signed: SignedMessage[ClientRequest]) -> State:
+                          signed: SignedMessage[ClientRequest]) -> 'State':
         return self
 
     def on_commit(self, msg: CommitMessage,
-                  signed: SignedMessage[CommitMessage]) -> State:
+                  signed: SignedMessage[CommitMessage]) -> 'State':
         # request proof of election if sender claims higher term
         if msg.term > self.term:
             self._request_election_proof(msg.term)
         return self
 
     def on_vote(self, msg: VoteMessage,
-                signed: SignedMessage[VoteMessage]) -> State:
+                signed: SignedMessage[VoteMessage]) -> 'State':
         from .candidate import Candidate
 
         # Add vote to votes map if term > current term
@@ -105,7 +104,7 @@ class State(object):
         return self
 
     def on_vote_request(self, msg: VoteRequest,
-                        signed: SignedMessage[VoteRequest]) -> State:
+                        signed: SignedMessage[VoteRequest]) -> 'State':
         from .voter import Voter
 
         # Send a vote if request is for a future term.
@@ -116,7 +115,7 @@ class State(object):
         return new_state
 
     def on_elected(self, msg: ElectedMessage,
-                   signed: SignedMessage[ElectedMessage]) -> State:
+                   signed: SignedMessage[ElectedMessage]) -> 'State':
         from .follower import Follower
 
         # Transition to follower state if election proof is for a future term.
@@ -127,11 +126,11 @@ class State(object):
                         commit_idx_a_cert, self)
 
     def on_election_proof_request(self, msg: ElectionProofRequest,
-                                  signed: SignedMessage[ElectionProofRequest]) -> State:
+                                  signed: SignedMessage[ElectionProofRequest]) -> 'State':
         return self
 
     def on_catchup_request(self, msg: CatchupRequest,
-                           signed: SignedMessage[CatchupRequest]) -> State:
+                           signed: SignedMessage[CatchupRequest]) -> 'State':
         if msg.last_slot < len(self.log):
             entries = self.log[msg.first_slot:msg.last_slot]
             resp = CatchupResponse(self.config.server_id, self.term,
@@ -140,10 +139,10 @@ class State(object):
         return self
 
     def on_catchup_response(self, msg: CatchupResponse,
-                            signed: SignedMessage[CatchupResponse]) -> State:
+                            signed: SignedMessage[CatchupResponse]) -> 'State':
         return self
 
-    def on_timeout(self, context: object) -> State:
+    def on_timeout(self, context: object) -> 'State':
         '''Returns resulting state.'''
         return self
 
