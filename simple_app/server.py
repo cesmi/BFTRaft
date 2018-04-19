@@ -19,23 +19,21 @@ client_addrs = {
     0: ('127.0.0.1', 8000),
     1: ('127.0.0.1', 8001),
     2: ('127.0.0.1', 8002),
-    3: ('127.0.0.1', 8003),
-    4: ('127.0.0.1', 8004)
+    3: ('127.0.0.1', 8003)
 }
 
 server_addrs = {
     0: ('127.0.0.1', 9000),
     1: ('127.0.0.1', 9001),
     2: ('127.0.0.1', 9002),
-    3: ('127.0.0.1', 9003),
-    4: ('127.0.0.1', 9004)
+    3: ('127.0.0.1', 9003)
 }
 
 
 def main():
     server_id = int(sys.argv[1])
-    client_pubkeys = read_pubkeys('client', 5)
-    server_pubkeys = read_pubkeys('server', 5)
+    client_pubkeys = read_pubkeys('client', 4)
+    server_pubkeys = read_pubkeys('server', 4)
     privkey = RSA.importKey(
         open('server%d_private.pem' % server_id, 'r').read())
     config = ServerConfig(server_id, client_pubkeys, server_pubkeys, privkey)

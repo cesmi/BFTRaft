@@ -29,6 +29,7 @@ class Candidate(State):
     def on_vote(self, msg: VoteMessage,
                 signed: SignedMessage[VoteMessage]) -> State:
         from .pre_leader import PreLeader
+        print('Candidate.on_vote called')
 
         # Only handle votes for the current term, else revert to default behavior
         if msg.term != self.term:
@@ -39,7 +40,8 @@ class Candidate(State):
                                list(self.votes_for_term.values()))
 
         # If have >= 2f + 1 votes, we are now elected
-        if len(self.votes[msg.term]) >= self.config.quorum_size:
+        if len(self.votes_for_term) >= self.config.quorum_size:
+            print('Received 2f + 1 votes for term %d, becoming leader' % self.term)
             pl_state = PreLeader(self.term, proof, self)
             final_state = pl_state.check_if_catchup_necessary()
             return final_state

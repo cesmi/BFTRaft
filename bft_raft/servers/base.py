@@ -1,6 +1,6 @@
 from ..application import Application
 from ..config import ServerConfig
-from ..messages import SignedMessage
+from ..messages import Message, SignedMessage
 from ..messengers.listener import MessengerListener
 from ..messengers.messenger import Messenger
 from ..server_states.state import State
@@ -20,8 +20,8 @@ class BaseServer(MessengerListener, TimeoutListener):
         self.state = self.initial_state()
         self.state.start()
 
-    def on_message(self, message: SignedMessage) -> None:
-        self.state = self.state.on_message(message)
+    def on_message(self, msg: Message, signed: SignedMessage) -> None:
+        self.state = self.state.on_message(msg, signed)
 
     def on_timeout(self, context: object) -> None:
         self.state = self.state.on_timeout(context)

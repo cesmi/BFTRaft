@@ -8,6 +8,7 @@ class BaseConfig(object):
         self.client_public_keys = client_public_keys
         self.server_public_keys = server_public_keys
         self.private_key = private_key
+        assert ((self.num_clients - 1) % 3) == 0
 
     @property
     def num_servers(self):

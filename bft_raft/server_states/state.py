@@ -1,12 +1,12 @@
 from collections import defaultdict
 from typing import Dict, List, TypeVar  # pylint:disable=W0611
+
 from ..config import ServerConfig
-from ..messages import ACert, CCert, LogEntry  # pylint:disable=W0611
-from ..messages import (AppendEntriesRequest, AppendEntriesSuccess, ClientRequest,
-                        CommitMessage, ElectedMessage,
-                        SignedMessage, VoteMessage, VoteRequest,
-                        ElectionProofRequest,
-                        CatchupRequest, CatchupResponse)
+from ..messages import (ACert, AppendEntriesRequest,  # pylint:disable=W0611
+                        AppendEntriesSuccess, CatchupRequest, CatchupResponse,
+                        CCert, ClientRequest, CommitMessage, ElectedMessage,
+                        ElectionProofRequest, LogEntry, Message, SignedMessage,
+                        VoteMessage, VoteRequest)
 
 if False:  # pylint:disable=W0125
     # (just for type checking; if statement avoids circular import)
@@ -45,17 +45,28 @@ class State(object):
         '''Performs any actions a server in this state should perform on startup.'''
         raise NotImplementedError
 
-    def on_message(self, msg: SignedMessage) -> 'State':
+    def on_message(self, msg: Message, signed: SignedMessage) -> 'State':
         '''Invokes the appropriate callback for msg. Returns resulting state.'''
-        m = msg.message  # unsigned
-        if isinstance(m, AppendEntriesRequest):
-            return self.on_append_entries_request(m, msg)
-        elif isinstance(m, AppendEntriesSuccess):
-            return self.on_append_entries_success(m, msg)
-        elif isinstance(m, ClientRequest):
-            return self.on_client_request(m, msg)
-        elif isinstance(m, CommitMessage):
-            return self.on_commit(m, msg)
+        if isinstance(msg, AppendEntriesRequest):
+            return self.on_append_entries_request(msg, signed)
+        elif isinstance(msg, AppendEntriesSuccess):
+            return self.on_append_entries_success(msg, signed)
+        elif isinstance(msg, ClientRequest):
+            return self.on_client_request(msg, signed)
+        elif isinstance(msg, CommitMessage):
+            return self.on_commit(msg, signed)
+        elif isinstance(msg, VoteMessage):
+            return self.on_vote(msg, signed)
+        elif isinstance(msg, VoteRequest):
+            return self.on_election_proof_request(msg, signed)
+        elif isinstance(msg, ElectedMessage):
+            return self.on_elected(msg, signed)
+        elif isinstance(msg, ElectionProofRequest):
+            return self.on_election_proof_request(msg, signed)
+        elif isinstance(msg, CatchupRequest):
+            return self.on_catchup_request(msg, signed)
+        elif isinstance(msg, CatchupResponse):
+            return self.on_catchup_response(msg, signed)
         else:
             assert False, 'unhandled message type'
 

@@ -12,7 +12,7 @@ class VoteMessage(ServerMessage):
         self.a_cert = a_cert
 
     def verify(self, config: BaseConfig) -> bool:
-        return False  # TODO
+        return True  # TODO
 
 
 class VoteRequest(ServerMessage):

@@ -31,7 +31,7 @@ class PreLeader(State):
         newly elected leader doesn't have yet.'''
         req = CatchupRequest(self.config.server_id, self.term,
                              len(self.log), self.commit_idx)
-        self.server.broadcast_server_message(req)
+        self.server.messenger.broadcast_server_message(req)
 
     def on_catchup_response(self, msg: CatchupResponse,
                             signed: SignedMessage[CatchupResponse]) -> State:

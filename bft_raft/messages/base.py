@@ -43,17 +43,31 @@ class SignedMessage(Generic[T]):
     '''A signed Message.'''
 
     def __init__(self, message: T, private_key) -> None:
-        self.message = message  # type: T
-        msg_hash = SHA256.new(pickle.dumps(message)).digest()
-        self.signature = private_key.sign(msg_hash, '')  # type: bytes
+        self.from_client = message.from_client
+        self.sender_id = message.sender_id
+        self.raw_message = pickle.dumps(message)  # type: bytes
+        self.signature = private_key.sign(self.msg_hash, '')
+
+    @property
+    def msg_hash(self):
+        return SHA256.new(self.raw_message).digest()
 
     def verify(self, public_key, config: BaseConfig) -> bool:
-        '''Verifies the message signature with given public key, and
-        verifies the enclosed message.'''
-        if not isinstance(self.message, Message):
-            return False
-        if not isinstance(self.signature, bytes):
-            return False
-        msg_hash = SHA256.new(pickle.dumps(self.message)).digest()
-        return public_key.verify(msg_hash, self.signature) \
-            and self.message.verify(config)
+        return self.get_message(public_key, config) is not None
+
+    def get_message(self, public_key, config: BaseConfig) -> T:
+        '''Verifies the signature, deserializes the enclosed message, and
+        verifies that the message is valid. If everything is valid, returns the
+        message object. Otherwise, returns None.'''
+        try:
+            if not public_key.verify(self.msg_hash, self.signature):
+                return None
+        except TypeError:
+            return None
+        try:
+            msg = pickle.loads(self.raw_message)
+        except pickle.UnpicklingError:
+            return None
+        if not isinstance(msg, Message) or not msg.verify(config):
+            return None
+        return msg

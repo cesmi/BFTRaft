@@ -27,7 +27,7 @@ class NormalOperationBase(State):
 
         # Commit messages we have received in this term for
         # slots > self.latest_a_cert.slot.
-        # Map from slot number -> server -> message.
+        # Map from slot number -> server -> (commit message, signed commit message).
         self.future_commits = defaultdict(dict)  # type: dict
 
     def on_append_entries_success(self, msg: AppendEntriesSuccess,
@@ -36,7 +36,7 @@ class NormalOperationBase(State):
             if msg.term > self.term:
                 self._request_election_proof(msg.term)
             return self
-        self._add_append_entries_success(signed)
+        self._add_append_entries_success(msg, signed)
         return self
 
     def on_commit(self, msg: CommitMessage,
@@ -58,12 +58,12 @@ class NormalOperationBase(State):
         # If the attached A-certificate's slot number is greater than that of our
         # latest a-cert, save it in self.future_commits
         if self.latest_a_cert is None or a_cert.slot > self.latest_a_cert.slot:
-            self.future_commits[a_cert.slot][msg.sender_id] = signed
+            self.future_commits[a_cert.slot][msg.sender_id] = (msg, signed)
             return self
 
         # If we make it here the a_cert must have equal slot to our latest a-cert
         assert self.latest_a_cert.slot == a_cert.slot
-        self._add_commit(signed)
+        self._add_commit(msg, signed)
         return self
 
     def on_timeout(self, context: object) -> State:
@@ -72,19 +72,19 @@ class NormalOperationBase(State):
     def start(self) -> None:
         raise NotImplementedError
 
-    def _add_append_entries_success(
-            self, msg: SignedMessage[AppendEntriesSuccess]) -> None:
+    def _add_append_entries_success(self, msg: AppendEntriesSuccess,
+                                    signed: SignedMessage[AppendEntriesSuccess]) -> None:
         '''Adds msg to append_entries_success if its slot number is greater
         than the that of our latest a-cert. If possible, forms a A-cert and
         updates the current commit index.'''
-        slot = msg.message.slot
+        slot = msg.slot
         if self.latest_a_cert.slot is not None \
                 and slot <= self.latest_a_cert.slot:
             return
 
-        inc_hash = msg.message.incremental_hash
-        server_id = msg.message.sender_id
-        self.append_entries_success[slot][inc_hash][server_id] = msg
+        inc_hash = msg.incremental_hash
+        server_id = msg.sender_id
+        self.append_entries_success[slot][inc_hash][server_id] = signed
 
         # Form an A-cert if possible
         num_successes = len(self.append_entries_success[slot][inc_hash])
@@ -96,11 +96,10 @@ class NormalOperationBase(State):
             assert new_a_cert.verify(self.config)
             self._a_cert_formed(new_a_cert)
 
-    def _add_commit(
-            self, signed: SignedMessage[CommitMessage]) -> None:
+    def _add_commit(self, msg: CommitMessage,
+                    signed: SignedMessage[CommitMessage]) -> None:
         '''Adds a commit message with slot equal to that of our latest A-cert
         to self.commit_messages.'''
-        msg = signed.message
         assert msg.a_cert.slot == self.latest_a_cert.slot
         self.commit_messages[msg.sender_id] = signed
 
@@ -141,11 +140,11 @@ class NormalOperationBase(State):
 
         # find all commit messages that we have with this slot
         self.commit_messages = {}
-        self._add_commit(SignedMessage(commit, self.config.private_key))
+        self._add_commit(commit, SignedMessage(commit, self.config.private_key))
         assert self.config.server_id not in self.future_commits[a_cert.slot]
-        for c in self.future_commits[a_cert.slot].values():
+        for c, signed in self.future_commits[a_cert.slot].values():
             assert c.a_cert.verify(self.config)
-            self._add_commit(c)
+            self._add_commit(c, signed)
 
         # clean up self.future_commits
         for slot in self.future_commits.keys():

@@ -1,7 +1,8 @@
 import asyncio
-import typing
-import struct
 import pickle
+import struct
+import traceback
+import typing
 from collections import defaultdict
 
 from ..config import BaseConfig
@@ -71,11 +72,11 @@ class AsyncIoMessenger(Messenger):
         # Remove any closed StreamWriters from this node's writers list
         self._writers[(addr, port)] = [
             w for w in self._writers[(addr, port)] if not w.transport.is_closing()]
-        msg = SignedMessage(message, self._config.private_key)
+        signed = SignedMessage(message, self._config.private_key)
 
         # If there are any left in the writers list, send the message
         if self._writers[(addr, port)]:
-            msg_raw = pickle.dumps(msg)
+            msg_raw = pickle.dumps(signed)
             writer = self._writers[(addr, port)][0]
             writer.write(struct.pack('I', len(msg_raw)))  # send message size
             writer.write(msg_raw)
@@ -91,11 +92,11 @@ class AsyncIoMessenger(Messenger):
         # the connection ourself.
         else:
             # Create the opening queue and add the message to it.
-            self._opening_queues[(addr, port)] = [message]
+            self._opening_queues[(addr, port)] = [signed]
 
             # Try to open the connection.
             try:
-                writer = await asyncio.open_connection(addr, port)
+                _, writer = await asyncio.open_connection(addr, port)
                 print('Opened connection with %s:%d' % (addr, port))
 
                 # Send queued messages to the node if the connection was successful.
@@ -119,23 +120,33 @@ class AsyncIoMessenger(Messenger):
                 msg_size_raw = await reader.readexactly(struct.calcsize('I'))
                 msg_size = struct.unpack('I', msg_size_raw)[0]
                 msg_raw = await reader.readexactly(msg_size)
-                msg = pickle.loads(msg_raw)
-                if not isinstance(msg, SignedMessage):
-                    raise RuntimeError
-
-                # Verify signature
-                from_client = msg.message.from_client
-                if from_client:
-                    pubkey = self._config.client_public_keys[msg.message.sender_id]
-                else:
-                    pubkey = self._config.server_public_keys[msg.message.sender_id]
-                if not msg.verify(pubkey, self._config):
-                    raise RuntimeError
-
-                # dispatch to listeners
-                for l in self._listeners:
-                    l.on_message(msg)
-
-            except (RuntimeError, KeyError, asyncio.IncompleteReadError):
-                writer.close()
+                signed = pickle.loads(msg_raw)
+            except asyncio.IncompleteReadError:
                 break
+            if not isinstance(signed, SignedMessage):
+                break
+
+            # Verify signature
+            if signed.from_client:
+                if not signed.sender_id in self._config.client_public_keys:
+                    break
+                pubkey = self._config.client_public_keys[signed.sender_id]
+            else:
+                if not signed.sender_id in self._config.server_public_keys:
+                    break
+                pubkey = self._config.server_public_keys[signed.sender_id]
+            msg = signed.get_message(pubkey, self._config)
+
+            # dispatch to listeners
+            fmt = (msg.__class__.__name__, signed.sender_id)
+            if signed.from_client:
+                print('Received %s from client %d' % fmt)
+            else:
+                print('Received %s from server %d' % fmt)
+            for l in self._listeners:
+                try:
+                    l.on_message(msg, signed)
+                except:  # pylint:disable=W0702
+                    print('on_message callback raised exception')
+                    print(traceback.format_exc())
+        writer.close()
