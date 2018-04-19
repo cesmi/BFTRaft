@@ -32,6 +32,7 @@ class AsyncIoMessenger(Messenger):
     def start_server(self) -> None:
         '''Start listening for incoming messages.'''
         assert not self._started_server
+        self._started_server = True
         if self._is_client:
             my_addr = self._clients[self._node_id][0]
             my_port = self._clients[self._node_id][1]

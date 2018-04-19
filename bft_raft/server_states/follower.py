@@ -40,13 +40,14 @@ class Follower(NormalOperationBase):
             return self
 
         # At least one slot must be greater than leader commit idx
-        if last_slot <= self.leader_commit_idx:
+        if self.leader_commit_idx is not None and last_slot <= self.leader_commit_idx:
             return self
 
         # If leader commit index is in range [first_slot, last_slot], check
         # that entries conform to the leader a cert
         # (by checking incremental hash at leader_commit_idx)
-        if first_slot <= self.leader_commit_idx \
+        if self.leader_commit_idx is not None \
+                and first_slot <= self.leader_commit_idx \
                 and self.leader_commit_idx <= last_slot:
             entry_idx = self.leader_commit_idx - first_slot
             if msg.entries[entry_idx].incremental_hash != \
@@ -55,8 +56,11 @@ class Follower(NormalOperationBase):
 
         # Don't re-append at slots where we already have an entry for the
         # current term
-        first_to_append = max([self.latest_slot_for_current_term + 1,
-                               first_slot])
+        if self.latest_slot_for_current_term is not None:
+            first_to_append = max([self.latest_slot_for_current_term + 1,
+                                   first_slot])
+        else:
+            first_to_append = first_slot
         first_idx = first_to_append - first_slot
         assert first_idx >= 0
 
@@ -68,7 +72,7 @@ class Follower(NormalOperationBase):
             last_slot, self.log[-1].incremental_hash())
         self.server.messenger.broadcast_server_message(resp)
         self._add_append_entries_success(
-            SignedMessage(resp, self.config.private_key))
+            resp, SignedMessage(resp, self.config.private_key))
 
         if self.log:
             self.latest_slot_for_current_term = len(self.log) - 1

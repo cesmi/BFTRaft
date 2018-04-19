@@ -43,3 +43,12 @@ class ServerConfig(BaseConfig):
 
 class ClientConfig(BaseConfig):
     '''Configuration settings for BFTRaft clients.'''
+
+    def __init__(self,
+                 client_id: int,
+                 server_public_keys: dict,
+                 public_key,
+                 private_key) -> None:
+        super(ClientConfig, self).__init__(
+            {client_id: public_key}, server_public_keys, private_key)
+        self.client_id = client_id

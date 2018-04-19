@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, List, TypeVar  # pylint:disable=W0611
+from typing import Dict, List, Tuple, TypeVar  # pylint:disable=W0611
 
 from ..config import ServerConfig
 from ..messages import (ACert, AppendEntriesRequest,  # pylint:disable=W0611
@@ -21,6 +21,10 @@ class State(object):
         self.term = 0
         self.latest_a_cert = None  # type: ACert
         self.applied_c_cert = None  # type: CCert
+
+        # Map from client id to (seqno, result) pair for the request with
+        # greatest sequence number executed by a client.
+        self.latest_req_per_client = {}  # type: Dict[int, Tuple[int, bytes]]
 
         # Votes received by this server.
         # Map from term id to server id to signed vote message.
@@ -68,7 +72,7 @@ class State(object):
         elif isinstance(msg, CatchupResponse):
             return self.on_catchup_response(msg, signed)
         else:
-            assert False, 'unhandled message type'
+            assert False, 'unhandled message type %s' % msg.__class__.__name__
 
     def on_append_entries_request(self, msg: AppendEntriesRequest,
                                   signed: SignedMessage[AppendEntriesRequest]) -> 'State':
@@ -158,7 +162,6 @@ class State(object):
         return self
 
     def _request_election_proof(self, term) -> None:
-        assert term > self.term
         primary = term % self.config.num_servers
         leader_proof_req = ElectionProofRequest(
             self.config.server_id, term)

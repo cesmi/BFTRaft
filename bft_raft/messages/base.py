@@ -70,4 +70,4 @@ class SignedMessage(Generic[T]):
             return None
         if not isinstance(msg, Message) or not msg.verify(config):
             return None
-        return msg
+        return msg  # type: ignore

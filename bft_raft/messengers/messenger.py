@@ -46,6 +46,9 @@ class Messenger(object):
                 return False
             pubkey = self.config.server_public_keys[signed.sender_id]
         msg = signed.get_message(pubkey, self.config)
+        if msg is None:
+            return False
+        print('Received %s from %d' % (msg.__class__.__name__, msg.sender_id))
 
         # dispatch to listeners
         for l in self.listeners:

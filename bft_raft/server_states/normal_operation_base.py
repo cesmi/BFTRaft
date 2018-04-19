@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from ..messages import (ACert, AppendEntriesSuccess, CCert, ClientResponse,
-                        CommitMessage, SignedMessage)
+                        CommitMessage, SignedMessage, ClientRequestFailure)
 from .state import State
 
 
@@ -23,7 +23,8 @@ class NormalOperationBase(State):
         # single (slot, incremental hash) pair, we can increase the commit
         # index and send a commit message.
         # Map from slot number -> incremental hash -> server -> message.
-        self.append_entries_success = defaultdict(dict)  # type: dict
+        self.append_entries_success = defaultdict(
+            lambda: defaultdict(dict))  # type: dict
 
         # Commit messages we have received in this term for
         # slots > self.latest_a_cert.slot.
@@ -78,7 +79,7 @@ class NormalOperationBase(State):
         than the that of our latest a-cert. If possible, forms a A-cert and
         updates the current commit index.'''
         slot = msg.slot
-        if self.latest_a_cert.slot is not None \
+        if self.latest_a_cert is not None \
                 and slot <= self.latest_a_cert.slot:
             return
 
@@ -118,13 +119,7 @@ class NormalOperationBase(State):
                 if self.applied_c_cert is not None:
                     start = self.applied_c_cert.slot + 1
                 for i in range(start, c_cert.slot + 1):
-                    entry = self.log[i]
-                    res = self.server.application.handle_request(entry.operation,
-                                                                 entry.client_id)
-                    # Send response to client
-                    cli_resp = ClientResponse(self.config.server_id, res)
-                    self.server.messenger.send_client_message(
-                        entry.client_id, cli_resp)
+                    self._execute_request(i)
                 self.applied_c_cert = c_cert
 
     def _a_cert_formed(self, a_cert: ACert) -> None:
@@ -155,3 +150,23 @@ class NormalOperationBase(State):
         for slot in self.append_entries_success.keys():
             if slot <= a_cert.slot:
                 del self.append_entries_success[slot]
+
+    def _execute_request(self, slot: int):
+        entry = self.log[slot]
+        client_id = entry.client_id
+
+        # Check that sequence number is > than the max used for this client
+        max_seqno = self.latest_req_per_client[client_id][0]
+        if max_seqno >= entry.seqno:
+            resp = ClientRequestFailure(
+                self.config.server_id, client_id, max_seqno,
+                self.latest_req_per_client[client_id][1])
+
+        else:
+            result = self.server.application.handle_request(
+                entry.operation, entry.client_id)
+            resp = ClientResponse(self.config.server_id,  # type: ignore
+                                  client_id, entry.seqno, result)
+
+        # Send response to client
+        self.server.messenger.send_client_message(client_id, resp)

@@ -10,18 +10,16 @@ from .client_request import ClientRequest
 
 class LogEntry(object):
     def __init__(self, term: int, prev_incremental_hash: bytes,
-                 client_request: SignedMessage[ClientRequest]) -> None:
+                 client_request: SignedMessage[ClientRequest],
+                 client_id: int, seqno: int,
+                 operation: bytes) -> None:
         self.term = term
         self.prev_incremental_hash = prev_incremental_hash
         self.signed = client_request
 
-    @property
-    def operation(self):
-        return self.signed.message.operation
-
-    @property
-    def client_id(self):
-        return self.signed.message.client_id
+        self.client_id = client_id
+        self.seqno = seqno
+        self.operation = operation
 
     def incremental_hash(self) -> bytes:
         return SHA256.new(pickle.dumps(self)).digest()

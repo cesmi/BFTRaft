@@ -1,5 +1,5 @@
 from ..messages import (CatchupRequest, CatchupResponse, ElectedMessage,
-                        SignedMessage)
+                        SignedMessage, ElectionProofRequest)
 from .state import State
 
 
@@ -18,8 +18,10 @@ class PreLeader(State):
 
     def check_if_catchup_necessary(self) -> State:
         '''If sending a catchup request to followers and waiting for replies is
-        necessary, sends the message. Otherwise, transitions immediately to leader state.'''
+        necessary, sends the message. Otherwise, transitions immediately to leader state.
+        Also sends proof of the new leader's election.'''
         from .leader import Leader
+        self.server.messenger.broadcast_server_message(self.election_proof)
         if self.commit_idx is not None and len(self.log) <= self.commit_idx:
             self.send_catchup_request()
             return self
@@ -51,6 +53,12 @@ class PreLeader(State):
         self.log += msg.entries
         assert len(self.log) == self.commit_idx + 1
         return Leader(self.term, self.election_proof, self)
+
+    def on_election_proof_request(self, msg: ElectionProofRequest,
+                                  signed: SignedMessage[ElectionProofRequest]) -> State:
+        self.server.messenger.send_server_message(
+            msg.sender_id, self.election_proof)
+        return self
 
     def start(self):
         assert False  # A server is never in this state initially
