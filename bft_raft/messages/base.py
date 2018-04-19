@@ -52,13 +52,20 @@ class SignedMessage(Generic[T]):
     def msg_hash(self):
         return SHA256.new(self.raw_message).digest()
 
-    def verify(self, public_key, config: BaseConfig) -> bool:
-        return self.get_message(public_key, config) is not None
+    def verify(self, config: BaseConfig) -> bool:
+        return self.get_message(config) is not None
 
-    def get_message(self, public_key, config: BaseConfig) -> T:
+    def get_message(self, config: BaseConfig) -> T:
         '''Verifies the signature, deserializes the enclosed message, and
         verifies that the message is valid. If everything is valid, returns the
         message object. Otherwise, returns None.'''
+        try:
+            if self.from_client:
+                public_key = config.client_public_keys[self.sender_id]
+            else:
+                public_key = config.server_public_keys[self.sender_id]
+        except KeyError:
+            return None
         try:
             if not public_key.verify(self.msg_hash, self.signature):
                 return None

@@ -37,15 +37,7 @@ class Messenger(object):
         on all attached listeners. Returns true on success, false, on failure.'''
 
         # Verify signature
-        if signed.from_client:
-            if not signed.sender_id in self.config.client_public_keys:
-                return False
-            pubkey = self.config.client_public_keys[signed.sender_id]
-        else:
-            if not signed.sender_id in self.config.server_public_keys:
-                return False
-            pubkey = self.config.server_public_keys[signed.sender_id]
-        msg = signed.get_message(pubkey, self.config)
+        msg = signed.get_message(self.config)
         if msg is None:
             return False
         print('Received %s from %d' % (msg.__class__.__name__, msg.sender_id))

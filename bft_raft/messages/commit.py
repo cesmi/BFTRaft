@@ -30,18 +30,15 @@ class Cert(object):
         for signed in self.msgs:
             if not isinstance(signed, SignedMessage):
                 return False
-            if not isinstance(signed.message, ServerMessage):
-                return False
 
             # Check that messages come from distinct servers
-            sender_id = signed.message.sender_id
-            public_key = config.server_public_keys[sender_id]
+            sender_id = signed.sender_id
             if sender_id in senders_seen:
                 return False
             senders_seen.add(sender_id)
 
             # Check that message is valid (signature, etc.)
-            if not signed.verify(public_key, config):
+            if not signed.verify(config):
                 return False
         return True
 
@@ -58,11 +55,12 @@ class ACert(Cert):
         if not super(ACert, self).verify(config):
             return False
         for signed in self.msgs:
-            if not isinstance(signed.message, AppendEntriesSuccess):
+            msg = signed.get_message(config)
+            if not isinstance(msg, AppendEntriesSuccess):
                 return False
-            if not signed.message.incremental_hash == self.incremental_hash:
+            if not msg.incremental_hash == self.incremental_hash:
                 return False
-            if not signed.message.slot == self.slot:
+            if not msg.slot == self.slot:
                 return False
         return True
 
@@ -88,10 +86,11 @@ class CCert(Cert):
         if not super(CCert, self).verify(config):
             return False
         for signed in self.msgs:
-            if not isinstance(signed.message, CommitMessage):
+            msg = signed.get_message(config)
+            if not isinstance(msg, CommitMessage):
                 return False
-            if not signed.message.a_cert.incremental_hash == self.incremental_hash:
+            if not msg.a_cert.incremental_hash == self.incremental_hash:
                 return False
-            if not signed.message.a_cert.slot == self.slot:
+            if not msg.a_cert.slot == self.slot:
                 return False
         return True
