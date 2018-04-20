@@ -45,13 +45,24 @@ class AppendEntriesRequest(ServerMessage):
             return False
         if not verify_entries(self.entries, config):
             return False
+        # if there is no success message enclosed (i.e. this message is a heartbeat)
+        # the entries list should be empty
+        if self.leader_success is None and self.entries:
+            return False
+        # if there is a success message encloesd, verify it
+        elif self.leader_success is not None:
+            if not isinstance(self.leader_success, AppendEntriesSuccess):
+                return False
+            if not self.leader_success.verify(config):
+                return False
         return super(AppendEntriesRequest, self).verify(config)
 
     def update_hash(self, h) -> None:
         for entry in self.entries:
             h.update(entry.incremental_hash())
         h.update(self.int_to_bytes(self.first_slot))
-        h.update(self.leader_success.hash())
+        if self.leader_success is not None:
+            h.update(self.leader_success.hash())
         super(AppendEntriesRequest, self).update_hash(h)
 
 

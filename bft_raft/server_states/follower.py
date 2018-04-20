@@ -23,9 +23,12 @@ class Follower(NormalOperationBase):
         if msg.sender_id % self.config.num_servers != msg.term:
             return self
 
-        # If no entries sent do nothing
-        # (we'll update heartbeat time here in the future)
+        # If no entries sent, this is a heartbeat
         if not msg.entries:
+            # TODO: update last heartbeat time
+            print('heartbeat')
+            if len(self.log) < msg.first_slot:
+                self._request_log_resend(len(self.log))
             return self
 
         # Check that message's incremental hash matches ours

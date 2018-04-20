@@ -40,6 +40,10 @@ class ServerConfig(BaseConfig):
             client_public_keys, server_public_keys, private_key)
         self.server_id = server_id
 
+        # Leader sends an empty AppendEntriesRequest to followers at this
+        # interval (in seconds)
+        self.heartbeat_interval = 1  # type: float
+
 
 class ClientConfig(BaseConfig):
     '''Configuration settings for BFTRaft clients.'''
