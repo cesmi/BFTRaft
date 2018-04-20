@@ -10,6 +10,15 @@ class BaseConfig(object):
         self.private_key = private_key
         assert ((self.num_clients - 1) % 3) == 0
 
+        self._timeout = 3  # type: float
+
+    def double_timeout(self) -> None:
+        self._timeout *= 2
+
+    @property
+    def timeout(self) -> float:
+        return self._timeout
+
     @property
     def num_servers(self):
         return len(self.server_public_keys)
@@ -39,10 +48,6 @@ class ServerConfig(BaseConfig):
         super(ServerConfig, self).__init__(
             client_public_keys, server_public_keys, private_key)
         self.server_id = server_id
-
-        # Leader sends an empty AppendEntriesRequest to followers at this
-        # interval (in seconds)
-        self.heartbeat_interval = 1  # type: float
 
 
 class ClientConfig(BaseConfig):

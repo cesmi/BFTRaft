@@ -1,3 +1,4 @@
+import time
 from ..messages import (ACert, AppendEntriesRequest, AppendEntriesSuccess,
                         SignedMessage)
 from .normal_operation_base import NormalOperationBase
@@ -11,6 +12,9 @@ class Follower(NormalOperationBase):
         self.leader_commit_idx = leader_commit_idx
         self.leader_a_cert = leader_a_cert
         self.latest_slot_for_current_term = None  # type: int
+        self.last_append_entries_time = time.time()
+        self.server.timeout_manager.set_timeout(
+            self.config.timeout, FollowerHeartbeatTimeout())
 
     def on_append_entries_request(self, msg: AppendEntriesRequest,
                                   signed: SignedMessage[AppendEntriesRequest]) -> State:
@@ -25,8 +29,7 @@ class Follower(NormalOperationBase):
 
         # If no entries sent, this is a heartbeat
         if not msg.entries:
-            # TODO: update last heartbeat time
-            print('heartbeat')
+            self.last_append_entries_time = time.time()
             if len(self.log) < msg.first_slot:
                 self._request_log_resend(len(self.log))
             return self
@@ -79,12 +82,29 @@ class Follower(NormalOperationBase):
         self._add_append_entries_success(
             msg.leader_success.message, msg.leader_success)
 
+        self.last_append_entries_time = time.time()
+
         if self.log:
             self.latest_slot_for_current_term = len(self.log) - 1
         return self
 
     def on_timeout(self, context: object) -> State:
-        return self
+        if isinstance(context, FollowerHeartbeatTimeout):
+            return self.on_heartbeat_timeout()
+        else:
+            return super(Follower, self).on_timeout(context)
+
+    def on_heartbeat_timeout(self) -> State:
+        if time.time() - self.last_append_entries_time > self.config.timeout:
+            return self.increment_term()
+        else:
+            self.server.timeout_manager.set_timeout(
+                self.config.timeout, FollowerHeartbeatTimeout())
+            return self
 
     def start(self) -> None:
         assert False  # A node is never in this state initially
+
+
+class FollowerHeartbeatTimeout(object):
+    pass

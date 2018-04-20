@@ -2,10 +2,10 @@ from collections import defaultdict
 from typing import Dict, List, Tuple, TypeVar  # pylint:disable=W0611
 
 from ..config import ServerConfig
-from ..messages import (ACert, AppendEntriesRequest, # pylint:disable=W0611
-                        AppendEntriesSuccess, LogResend, CatchupRequest, 
+from ..messages import (ACert, AppendEntriesRequest,  # pylint:disable=W0611
+                        AppendEntriesSuccess, LogResend, CatchupRequest,
                         CatchupResponse, CCert, ClientRequest, CommitMessage,
-                        ElectedMessage, ElectionProofRequest, LogEntry, 
+                        ElectedMessage, ElectionProofRequest, LogEntry,
                         Message, SignedMessage, VoteMessage, VoteRequest)
 
 if False:  # pylint:disable=W0125
@@ -28,7 +28,7 @@ class State(object):
 
         # Votes received by this server.
         # Map from term id to server id to signed vote message.
-        self.votes = defaultdict()  # type: Dict[int, Dict[int, SignedMessage[VoteMessage]]]
+        self.votes = defaultdict(dict)  # type: Dict[int, Dict[int, SignedMessage[VoteMessage]]]
 
         if copy_from is not None:
             self.log = copy_from.log
@@ -41,7 +41,7 @@ class State(object):
             self.term = term
 
             # Discard votes from before the new term
-            for t in self.votes.keys():
+            for t in list(self.votes.keys()):
                 if t <= self.term:
                     del self.votes[t]
 
@@ -166,12 +166,29 @@ class State(object):
         '''Returns resulting state.'''
         return self
 
+    def increment_term(self) -> 'State':
+        '''Increments the term by 1 and returns the resulting state
+        (either voter or candidate). Can be called when the leader is suspected
+        to be faulty.'''
+        from .candidate import Candidate
+        from .voter import Voter
+        next_term = self.term + 1
+        if next_term % self.config.num_servers == self.config.server_id:
+            # we are leader in the next term, so become a Candidate
+            new_state = Candidate(next_term, {}, self.server, self)
+            return new_state
+        else:
+            # become a voter
+            new_state = Voter(next_term, self.server, self)
+            new_state.send_vote()
+            return new_state
+
     def _request_election_proof(self, term) -> None:
         primary = term % self.config.num_servers
         leader_proof_req = ElectionProofRequest(
             self.config.server_id, term)
         self.server.messenger.send_server_message(primary, leader_proof_req)
-        
+
     def _request_log_resend(self, most_recent_known_entry) -> None:
         primary = self.term % self.config.num_servers
         log_resend_req = LogResend(self.config.server_id, self.term, most_recent_known_entry)

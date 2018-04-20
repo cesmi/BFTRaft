@@ -1,4 +1,3 @@
-import time
 from ..messages import (AppendEntriesRequest, AppendEntriesSuccess, LogResend,
                         ClientRequest, ElectedMessage, ElectionProofRequest,
                         LogEntry, SignedMessage)
@@ -35,7 +34,6 @@ class Leader(NormalOperationBase):
         self._add_append_entries_success(success, signed_success)
 
         # Build an AppendEntriesRequest to send to other servers
-        self.last_append_entries_time = time.time()
         request = AppendEntriesRequest(self.config.server_id, self.term,
                                        [entry], slot, signed_success)
         self.server.messenger.broadcast_server_message(request)
@@ -77,7 +75,7 @@ class Leader(NormalOperationBase):
 
     def _send_heartbeat(self):
         self.server.timeout_manager.set_timeout(
-            self.config.heartbeat_interval, LeaderHeartbeatTimeout())
+            self.config.timeout / 2, LeaderHeartbeatTimeout())
         msg = AppendEntriesRequest(self.config.server_id, self.term,
                                    [], len(self.log), None)
         self.server.messenger.broadcast_server_message(msg)
