@@ -9,6 +9,7 @@ from ..messengers.asyncio import AsyncIoMessenger
 from ..messengers.listener import MessengerListener
 from ..timeout_managers.asyncio import AsyncIoTimeoutManager
 from ..timeout_managers.listener import TimeoutListener
+from ..util.asyncio_shutdown import shutdown
 
 
 class AsyncIoClient(MessengerListener, TimeoutListener):
@@ -97,7 +98,8 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
         self.messenger.start_server()
 
     def shutdown(self) -> None:
-        pass  # TODO
+        self.loop.run_until_complete(shutdown(self.loop))
+        self.loop.close()
 
     def _add_result(self, server_id: int, result: bytes) -> None:
         assert self.responses_sem is not None

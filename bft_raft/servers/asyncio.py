@@ -1,8 +1,10 @@
 import asyncio
+
 from ..application import Application
 from ..config import ServerConfig
 from ..messengers.asyncio import AsyncIoMessenger
 from ..timeout_managers.asyncio import AsyncIoTimeoutManager
+from ..util.asyncio_shutdown import shutdown
 from .base import BaseServer
 
 
@@ -21,5 +23,12 @@ class AsyncIoServer(BaseServer):
         self.asyncio_messenger = messenger
 
     def run(self):
-        self.messenger.start_server()
-        self.loop.run_forever()
+        try:
+            self.messenger.start_server()
+            self.loop.run_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            print('Shutting down')
+            self.loop.run_until_complete(shutdown(self.loop))
+            self.loop.close()
