@@ -59,7 +59,13 @@ class ElectedMessage(ServerMessage):
         '''Returns the commit index of the new leader based on the
         view numbers/slot numbers of the A-certificates contained in the
         election quorum. Also returns the corresponding A-certificate.'''
-        return (None, None)  # TODO
+        cert = max((m.message.a_cert for m in self.votes
+                    if m.message.a_cert is not None),
+                   key=lambda cert: (cert.term, cert.slot),
+                   default=None)
+        if cert is not None:
+            return (cert.slot, cert)
+        return (None, None)
 
 
 class ElectionProofRequest(ServerMessage):
