@@ -1,5 +1,6 @@
 import asyncio
 import typing
+from collections import defaultdict
 
 from ..config import ClientConfig
 from ..messages import (ClientRequest, ClientRequestFailure, ClientResponse,
@@ -21,7 +22,9 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
         self.loop = asyncio.get_event_loop()
         self.messenger = AsyncIoMessenger(config, {self.config.client_id: client_addr},
                                           server_addrs, config.client_id, True, self.loop)
+        self.messenger.add_listener(self)
         self.timeout_manager = AsyncIoTimeoutManager(self.loop)
+        self.timeout_manager.add_listener(self)
         self.seqno = 0
 
         # Request that we have sent and are currently waiting on responses for
@@ -55,10 +58,13 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
             self.on_failure(msg)
 
     def on_response(self, msg: ClientResponse) -> None:
+        print('a')
         if self.active_request is None:
             return
+        print('b')
         if msg.seqno != self.seqno or msg.requester != self.config.client_id:
             return
+        print('c')
         self._add_result(msg.sender_id, msg.result)
 
     def on_failure(self, msg: ClientRequestFailure) -> None:
@@ -76,10 +82,10 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
         # Otherwise, max_seqno > our current seqno. If f + 1 servers indicate that
         # our local seqno is out of date, we increase it and retry the request
         else:
-            assert msg.max_seqno > self.seqno
+            assert msg.max_seqno >= self.seqno
             self.failures[msg.sender_id] = msg.max_seqno
             if len(self.failures) >= self.config.f + 1:
-                new_seqno = min(self.failures.values())
+                new_seqno = min(self.failures.values()) + 1
                 assert new_seqno > self.seqno
                 self.seqno = new_seqno
                 self._resend_request()
@@ -90,8 +96,12 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
     def start_server(self) -> None:
         self.messenger.start_server()
 
+    def shutdown(self) -> None:
+        pass  # TODO
+
     def _add_result(self, server_id: int, result: bytes) -> None:
         assert self.responses_sem is not None
+        print(server_id)
         self.responses[result].add(server_id)
 
         # If we have f + 1 responses, increment the semaphore so we can stop
@@ -114,7 +124,7 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
             assert False
 
     def _resend_request(self):
-        self.responses = {}
+        self.responses = defaultdict(set)
         self.failures = {}
         self.result = None
         req = ClientRequest(self.config.client_id, self.seqno,

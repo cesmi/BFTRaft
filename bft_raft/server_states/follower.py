@@ -73,6 +73,8 @@ class Follower(NormalOperationBase):
         self.server.messenger.broadcast_server_message(resp)
         self._add_append_entries_success(
             resp, SignedMessage(resp, self.config.private_key))
+        self._add_append_entries_success(
+            msg.leader_success.message, msg.leader_success)
 
         if self.log:
             self.latest_slot_for_current_term = len(self.log) - 1

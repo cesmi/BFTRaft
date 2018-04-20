@@ -10,7 +10,9 @@ from bft_raft.clients.asyncio import AsyncIoClient
 
 
 messages = [
-    'msg 1'
+    'msg 1',
+    'msg 2',
+    'msg 3'
 ]
 
 
@@ -19,9 +21,11 @@ def main():
     privkey = read_privkey('client', client_id)
     config = ClientConfig(client_id, client_pubkeys, server_pubkeys, privkey)
     client = AsyncIoClient(config, client_addrs[client_id], server_addrs)
+    client.start_server()
     for msg in messages:
-        resp = client.send_request(msg.encode())
+        resp = client.send_request(msg.encode()).decode()
         assert resp == msg
+    client.shutdown()
     print('done')
 
 

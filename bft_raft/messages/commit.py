@@ -88,6 +88,10 @@ class CommitMessage(ServerMessage):
     def incremental_hash(self) -> bytes:
         return self.a_cert.incremental_hash
 
+    @property
+    def slot(self) -> int:
+        return self.a_cert.slot
+
 
 class CCert(Cert):
     '''C-certificate: contains 2f + 1 commit messages.'''

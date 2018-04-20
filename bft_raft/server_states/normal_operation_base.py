@@ -156,17 +156,18 @@ class NormalOperationBase(State):
         client_id = entry.client_id
 
         # Check that sequence number is > than the max used for this client
-        max_seqno = self.latest_req_per_client[client_id][0]
-        if max_seqno >= entry.seqno:
+        if client_id in self.latest_req_per_client \
+                and self.latest_req_per_client[client_id][0] >= entry.seqno:
             resp = ClientRequestFailure(
-                self.config.server_id, client_id, max_seqno,
+                self.config.server_id, client_id,
+                self.latest_req_per_client[client_id][0],
                 self.latest_req_per_client[client_id][1])
-
         else:
             result = self.server.application.handle_request(
                 entry.operation, entry.client_id)
             resp = ClientResponse(self.config.server_id,  # type: ignore
                                   client_id, entry.seqno, result)
+            self.latest_req_per_client[client_id] = (entry.seqno, result)
 
         # Send response to client
         self.server.messenger.send_client_message(client_id, resp)

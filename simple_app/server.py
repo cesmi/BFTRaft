@@ -12,7 +12,7 @@ from bft_raft.servers.asyncio import AsyncIoServer
 
 class PrintAndEcho(Application):
     def handle_request(self, operation: bytes, client_id: int) -> bytes:
-        print('OPERATION: %s' % str(operation))
+        print('OPERATION: %s' % operation.decode())
         return operation
 
 

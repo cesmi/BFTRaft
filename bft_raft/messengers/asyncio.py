@@ -54,7 +54,7 @@ class AsyncIoMessenger(Messenger):
 
     def send_client_message(self, client_id: int, message: Message) -> None:
         addr = self._clients[client_id][0]
-        port = self._servers[client_id][1]
+        port = self._clients[client_id][1]
         self._loop.create_task(self._send_message(addr, port, message))
 
     def broadcast_server_message(self, message) -> None:
@@ -92,14 +92,17 @@ class AsyncIoMessenger(Messenger):
             # Try to open the connection.
             try:
                 _, writer = await asyncio.open_connection(addr, port)
+                self._writers[(addr, port)].append(writer)
                 print('Opened connection with %s:%d' % (addr, port))
 
                 # Send queued messages to the node if the connection was successful.
-                for m in self._opening_queues[(addr, port)]:
-                    m_raw = pickle.dumps(m)
-                    # send message size
-                    writer.write(struct.pack('I', len(m_raw)))
-                    writer.write(m_raw)
+                if self._opening_queues[(addr, port)] is not None:
+                    for m in self._opening_queues[(addr, port)]:
+                        m_raw = pickle.dumps(m)
+                        # send message size
+                        writer.write(struct.pack('I', len(m_raw)))
+                        writer.write(m_raw)
+                    self._opening_queues[(addr, port)] = None
 
             except ConnectionError:
                 print('Failed to open connection with %s:%d' % (addr, port))

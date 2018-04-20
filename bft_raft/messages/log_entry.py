@@ -26,7 +26,7 @@ class LogEntry(Hashable):
 
     @property
     def operation(self):
-        return self.request.operation
+        return self.request.message.operation
 
     def update_hash(self, h) -> None:
         h.update(self.int_to_bytes(self.term))

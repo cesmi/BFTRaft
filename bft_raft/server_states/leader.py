@@ -20,22 +20,22 @@ class Leader(NormalOperationBase):
     def on_client_request(self, msg: ClientRequest,
                           signed: SignedMessage[ClientRequest]):
 
-        # Build an AppendEntriesRequest to send to other servers
+        # Add the entry to our own log
         prev_ihash = b'0'
         if self.log:  # log not empty
             prev_ihash = self.log[-1].incremental_hash()
         entry = LogEntry(self.term, prev_ihash, signed)
         slot = len(self.log)
-        request = AppendEntriesRequest(self.config.server_id, self.term,
-                                       [entry], slot)
-        self.server.messenger.broadcast_server_message(request)
-
-        # Add the entry to our own log
         self.log.append(entry)
         success = AppendEntriesSuccess(self.config.server_id, self.term, slot,
                                        entry.incremental_hash())
-        self._add_append_entries_success(
-            success, SignedMessage(success, self.config.private_key))
+        signed_success = SignedMessage(success, self.config.private_key)
+        self._add_append_entries_success(success, signed_success)
+
+        # Build an AppendEntriesRequest to send to other servers
+        request = AppendEntriesRequest(self.config.server_id, self.term,
+                                       [entry], slot, signed_success)
+        self.server.messenger.broadcast_server_message(request)
         return self
 
     def on_election_proof_request(self, msg: ElectionProofRequest,
