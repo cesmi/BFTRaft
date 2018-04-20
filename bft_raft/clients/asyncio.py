@@ -59,13 +59,10 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
             self.on_failure(msg)
 
     def on_response(self, msg: ClientResponse) -> None:
-        print('a')
         if self.active_request is None:
             return
-        print('b')
         if msg.seqno != self.seqno or msg.requester != self.config.client_id:
             return
-        print('c')
         self._add_result(msg.sender_id, msg.result)
 
     def on_failure(self, msg: ClientRequestFailure) -> None:
@@ -103,7 +100,6 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
 
     def _add_result(self, server_id: int, result: bytes) -> None:
         assert self.responses_sem is not None
-        print(server_id)
         self.responses[result].add(server_id)
 
         # If we have f + 1 responses, increment the semaphore so we can stop
