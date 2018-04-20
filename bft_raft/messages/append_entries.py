@@ -54,11 +54,17 @@ class AppendEntriesRequest(ServerMessage):
         h.update(self.leader_success.hash())
         super(AppendEntriesRequest, self).update_hash(h)
 
+
 class LogResend(ServerMessage):
-    def __init__(self, sender_id: int, term: int, log_len: int):
+    def __init__(self, sender_id: int, term: int, log_len: int) -> None:
         super(LogResend, self).__init__(sender_id, term)
         self.log_len = log_len
 
-        def verify(self, config: BaseConfig) -> bool:
-            # TODO even necessary?
-            return True
+    def verify(self, config: BaseConfig) -> bool:
+        if not isinstance(self.log_len, int) or self.log_len < 0:
+            return False
+        return super(LogResend, self).verify(config)
+
+    def update_hash(self, h) -> None:
+        h.update(self.int_to_bytes(self.log_len))
+        super(LogResend, self).update_hash(h)
