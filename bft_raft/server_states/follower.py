@@ -33,7 +33,8 @@ class Follower(NormalOperationBase):
         first_slot = msg.first_slot
         last_slot = msg.last_slot
         if len(self.log) < first_slot:
-            # TODO: respond to the leader to indicate we are behind
+            # TODO should this be len(self.log)
+            self._request_log_resend(len(self.log))
             return self
         if first_slot > 0 and first_entry.prev_incremental_hash != \
                 self.log[first_slot - 1].incremental_hash():

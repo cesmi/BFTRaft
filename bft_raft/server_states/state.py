@@ -2,11 +2,11 @@ from collections import defaultdict
 from typing import Dict, List, Tuple, TypeVar  # pylint:disable=W0611
 
 from ..config import ServerConfig
-from ..messages import (ACert, AppendEntriesRequest,  # pylint:disable=W0611
-                        AppendEntriesSuccess, CatchupRequest, CatchupResponse,
-                        CCert, ClientRequest, CommitMessage, ElectedMessage,
-                        ElectionProofRequest, LogEntry, Message, SignedMessage,
-                        VoteMessage, VoteRequest)
+from ..messages import (ACert, AppendEntriesRequest, # pylint:disable=W0611
+                        AppendEntriesSuccess, LogResend, CatchupRequest, 
+                        CatchupResponse, CCert, ClientRequest, CommitMessage,
+                        ElectedMessage, ElectionProofRequest, LogEntry, 
+                        Message, SignedMessage, VoteMessage, VoteRequest)
 
 if False:  # pylint:disable=W0125
     # (just for type checking; if statement avoids circular import)
@@ -57,6 +57,8 @@ class State(object):
             return self.on_append_entries_success(msg, signed)
         elif isinstance(msg, ClientRequest):
             return self.on_client_request(msg, signed)
+        elif isinstance(msg, LogResend):
+            return self.on_log_resend(msg, signed)
         elif isinstance(msg, CommitMessage):
             return self.on_commit(msg, signed)
         elif isinstance(msg, VoteMessage):
@@ -86,6 +88,9 @@ class State(object):
         # request proof of election if sender claims higher term
         if msg.term > self.term:
             self._request_election_proof(msg.term)
+        return self
+
+    def on_log_resend(self, msg: LogResend, signed: SignedMessage[LogResend]) -> 'State':
         return self
 
     def on_client_request(self, msg: ClientRequest,
@@ -166,6 +171,11 @@ class State(object):
         leader_proof_req = ElectionProofRequest(
             self.config.server_id, term)
         self.server.messenger.send_server_message(primary, leader_proof_req)
+        
+    def _request_log_resend(self, most_recent_known_entry) -> None:
+        primary = self.term % self.config.num_servers
+        log_resend_req = LogResend(self.config.server_id, self.term, most_recent_known_entry)
+        self.server.messenger.send_server_message(primary, log_resend_req)
 
     @property
     def config(self) -> ServerConfig:

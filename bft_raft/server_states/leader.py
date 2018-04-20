@@ -1,4 +1,4 @@
-from ..messages import (AppendEntriesRequest, AppendEntriesSuccess,
+from ..messages import (AppendEntriesRequest, AppendEntriesSuccess, LogResend,
                         ClientRequest, ElectedMessage, ElectionProofRequest,
                         LogEntry, SignedMessage)
 from .normal_operation_base import NormalOperationBase
@@ -42,6 +42,18 @@ class Leader(NormalOperationBase):
                                   signed: SignedMessage[ElectionProofRequest]) -> State:
         self.server.messenger.send_server_message(
             msg.sender_id, self.election_proof)
+        return self
+
+    def on_log_resend(self, msg: LogResend, signed: SignedMessage[LogResend]) -> State:
+        if msg.log_len < 0 or msg.log_len >= len(self.log):
+            return self
+        # Build the most recent AppendEntriesRequest and send
+        success = AppendEntriesSuccess(self.config.server_id, self.term,
+                len(self.log) - 1, self.log[-1].incremental_hash())
+        signed_success = SignedMessage(success, self.config.private_key)
+        old_request = AppendEntriesRequest(self.config.server_id, self.term,
+                self.log[msg.log_len:-1], msg.log_len, signed_success)
+        self.server.messenger.send_server_message(msg.sender_id, old_request)
         return self
 
     def start(self):

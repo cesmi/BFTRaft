@@ -53,3 +53,12 @@ class AppendEntriesRequest(ServerMessage):
         h.update(self.int_to_bytes(self.first_slot))
         h.update(self.leader_success.hash())
         super(AppendEntriesRequest, self).update_hash(h)
+
+class LogResend(ServerMessage):
+    def __init__(self, sender_id: int, term: int, log_len: int):
+        super(LogResend, self).__init__(sender_id, term)
+        self.log_len = log_len
+
+        def verify(self, config: BaseConfig) -> bool:
+            # TODO even necessary?
+            return True

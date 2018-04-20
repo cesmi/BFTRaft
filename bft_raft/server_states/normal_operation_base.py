@@ -123,7 +123,7 @@ class NormalOperationBase(State):
                 self.applied_c_cert = c_cert
 
     def _a_cert_formed(self, a_cert: ACert) -> None:
-        '''Called when we get enough AppendEntriesSuccess messgaes to form
+        '''Called when we get enough AppendEntriesSuccess messages to form
         an A-cert. Sends a commit message to all other servers.'''
         assert self.latest_a_cert is None \
             or a_cert.slot > self.latest_a_cert.slot

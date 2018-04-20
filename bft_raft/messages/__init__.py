@@ -1,4 +1,4 @@
-from .append_entries import AppendEntriesRequest, AppendEntriesSuccess
+from .append_entries import AppendEntriesRequest, AppendEntriesSuccess, LogResend
 from .base import Message, ServerMessage, SignedMessage
 from .client_request import ClientRequest, ClientResponse, ClientRequestFailure
 from .commit import CommitMessage, ACert, CCert
