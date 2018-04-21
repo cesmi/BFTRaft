@@ -12,7 +12,8 @@ class PreLeader(State):
         self.commit_idx, self.commit_idx_a_cert = election_proof.leader_commit_idx()
         if self.applied_c_cert is not None:
             self.log = self.log[:self.applied_c_cert.slot + 1]
-            assert self.applied_c_cert.slot <= self.commit_idx
+            if self.commit_idx is not None:
+                assert self.applied_c_cert.slot <= self.commit_idx
         else:
             self.log = []
 

@@ -89,7 +89,15 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
                 self._resend_request()
 
     def on_timeout(self, context: object) -> None:
-        pass
+        if isinstance(context, RequestTimeout):
+            self.on_request_timeout(context)
+        else:
+            super(AsyncIoClient, self).on_timeout(context)
+
+    def on_request_timeout(self, context: 'RequestTimeout') -> None:
+        if self.active_request is not None and context.seqno == self.seqno:
+            self.config.double_timeout()
+            self._send_request_msg()
 
     def start_server(self) -> None:
         self.messenger.start_server()
@@ -125,6 +133,16 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
         self.responses = defaultdict(set)
         self.failures = {}
         self.result = None
+        self._send_request_msg()
+
+    def _send_request_msg(self):
         req = ClientRequest(self.config.client_id, self.seqno,
                             self.active_request)
         self.messenger.broadcast_server_message(req)
+        self.timeout_manager.set_timeout(self.config.timeout,
+                                         RequestTimeout(self.seqno))
+
+
+class RequestTimeout(object):
+    def __init__(self, seqno: int) -> None:
+        self.seqno = seqno

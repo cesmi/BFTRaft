@@ -12,6 +12,9 @@ class Leader(NormalOperationBase):
         super(Leader, self).__init__(term, copy_from)
         self.election_proof = election_proof
         commit_idx, _ = election_proof.leader_commit_idx()
+        for vote in election_proof.votes:
+            print(vote.message.a_cert)
+        print(commit_idx)
         if commit_idx is not None:
             assert commit_idx == len(self.log) - 1
         else:

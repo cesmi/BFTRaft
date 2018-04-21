@@ -33,7 +33,9 @@ class State(object):
         if copy_from is not None:
             self.log = copy_from.log
             self.term = copy_from.term
+            self.latest_a_cert = copy_from.latest_a_cert
             self.applied_c_cert = copy_from.applied_c_cert
+            self.latest_req_per_client = self.latest_req_per_client
             self.votes = copy_from.votes
 
         if term is not None:

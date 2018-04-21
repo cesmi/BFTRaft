@@ -25,7 +25,7 @@ def main():
     server_id = int(sys.argv[1])
     privkey = read_privkey('server', server_id)
     config = ServerConfig(server_id, client_pubkeys, server_pubkeys, privkey)
-    config.enable_logging = False
+    config.enable_logging = True
     app = LogAndEcho(open('server%d_log.txt' % server_id, 'w'))
     server = AsyncIoServer(config, app, client_addrs, server_addrs)
     server.run()
