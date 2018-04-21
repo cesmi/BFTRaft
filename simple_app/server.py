@@ -10,9 +10,14 @@ from bft_raft.config import ServerConfig
 from bft_raft.servers.asyncio import AsyncIoServer
 
 
-class PrintAndEcho(Application):
+class LogAndEcho(Application):
+    def __init__(self, logfile):
+        self.logfile = logfile
+
     def handle_request(self, operation: bytes, client_id: int) -> bytes:
         print('OPERATION: %s' % operation.decode())
+        self.logfile.write(operation.decode() + '\n')
+        self.logfile.flush()
         return operation
 
 
@@ -20,7 +25,8 @@ def main():
     server_id = int(sys.argv[1])
     privkey = read_privkey('server', server_id)
     config = ServerConfig(server_id, client_pubkeys, server_pubkeys, privkey)
-    app = PrintAndEcho()
+    config.enable_logging = False
+    app = LogAndEcho(open('server%d_log.txt' % server_id, 'w'))
     server = AsyncIoServer(config, app, client_addrs, server_addrs)
     server.run()
 

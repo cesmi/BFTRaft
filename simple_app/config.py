@@ -6,12 +6,9 @@ sys.path.insert(0, os.path.abspath(
 from Crypto.PublicKey import RSA
 
 
-client_addrs = {
-    0: ('127.0.0.1', 8000),
-    1: ('127.0.0.1', 8001),
-    2: ('127.0.0.1', 8002),
-    3: ('127.0.0.1', 8003)
-}
+client_addrs = {}
+for i in range(50):
+    client_addrs[i] = ('127.0.0.1', 8000 + i)
 
 server_addrs = {
     0: ('127.0.0.1', 9000),
