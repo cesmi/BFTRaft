@@ -93,7 +93,7 @@ class AsyncIoMessenger(Messenger):
             try:
                 _, writer = await asyncio.open_connection(addr, port)
                 self._writers[(addr, port)].append(writer)
-                print('Opened connection with %s:%d' % (addr, port))
+                self.config.log('Opened connection with %s:%d' % (addr, port))
 
                 # Send queued messages to the node if the connection was successful.
                 if self._opening_queues[(addr, port)] is not None:
@@ -105,7 +105,7 @@ class AsyncIoMessenger(Messenger):
                     self._opening_queues[(addr, port)] = None
 
             except ConnectionError:
-                print('Failed to open connection with %s:%d' % (addr, port))
+                self.config.log('Failed to open connection with %s:%d' % (addr, port))
 
             # Erase the opening queue
             self._opening_queues[(addr, port)] = None

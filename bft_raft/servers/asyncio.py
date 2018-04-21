@@ -29,6 +29,6 @@ class AsyncIoServer(BaseServer):
         except KeyboardInterrupt:
             pass
         finally:
-            print('Shutting down')
+            self.config.log('Shutting down')
             self.loop.run_until_complete(shutdown(self.loop))
             self.loop.close()

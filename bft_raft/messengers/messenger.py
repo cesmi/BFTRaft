@@ -40,14 +40,16 @@ class Messenger(object):
         if signed.verify(self.config) is None:
             return False
         msg = signed.message
-        print('Received %s from %d' % (msg.__class__.__name__, msg.sender_id))
+        self.config.log('Received %s from %d' % (msg.__class__.__name__, msg.sender_id))
 
         # dispatch to listeners
         for l in self.listeners:
             try:
                 l.on_message(msg, signed)
-            except:  # pylint:disable=W0702
-                print('on_message callback raised exception')
-                print(traceback.format_exc())
+            except Exception as e:  # pylint:disable=W0703
+                if isinstance(e, KeyboardInterrupt):
+                    raise e
+                self.config.log('on_message callback raised exception', force=True)
+                self.config.log(traceback.format_exc(), force=True)
                 return False
         return True

@@ -11,9 +11,14 @@ class BaseConfig(object):
         assert ((self.num_clients - 1) % 3) == 0
 
         self._timeout = 3  # type: float
+        self.enable_logging = True
 
     def double_timeout(self) -> None:
         self._timeout *= 2
+
+    def log(self, msg, force=False) -> None:
+        if self.enable_logging or force:
+            print(msg)
 
     @property
     def timeout(self) -> float:
