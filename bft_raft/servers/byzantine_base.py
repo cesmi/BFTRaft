@@ -21,6 +21,14 @@ from ..server_states.byzantine_follower import ByzantineFollower0
 from ..server_states.byzantine_leader import ByzantineLeader0
 from ..server_states.byzantine_preleader import ByzantinePreLeader0
 
+evil_map = {
+        'Follower': ByzantineFollower0,
+        'Leader': ByzantineLeader0,
+        'PreLeader': ByzantinePreLeader0,
+        'Voter': ByzantineVoter0,
+        'Candidate': ByzantineCandidate0
+        }
+
 class ByzantineBaseServer(BaseServer):
     def __init__(self, config: ServerConfig, application: Application,
                  messenger: Messenger, timeout_manager: TimeoutManager,
@@ -30,29 +38,23 @@ class ByzantineBaseServer(BaseServer):
                 messenger, timeout_manager)
 
     def on_message(self, msg: Message, signed: SignedMessage) -> None:
-        next_state = super(ByzantineBaseServer, self).on_message(msg, signed)
-        assert(next_state != None)
-        if isinstance(next_state, Follower):
-            return ByzantineFollower0(msg.term, self.votes[msg.term], self.server, self)
-        elif isinstance(next_state, Voter):
-            return ByzantineVoter0(msg.term, self.server, self)
-        elif isinstance(next_state, Candidate):
-            return ByzantineCandidate0(next_term, {}, self.server, self)
-        elif isinstance(next_state, PreLeader):
-            return ByzantinePreLeader0(next_state.term, next_term.election_proof, self)
-        elif isinstance(next_state, Leader):
-            return ByzantineLeader0(next_state.term, next_term.election_proof, self)
-        else:
-            print(next_state)
-            assert(False)
+        super(ByzantineBaseServer, self).on_message(msg, signed)
+        if self.state.__class__.__name__ in evil_map:
+            return evil_map[self.state.__class__.__name__].construct(self.state)
+        return self
 
     def on_timeout(self, context: object) -> None:
-        next_state = super(ByzantineBaseServer, self).on_timeout(context)
-        if isinstance(next_state, Voter):
-            return ByzantineVoter0(next_state.term, self.server, self)
-        elif isinstance(next_state, Candidate):
-            return ByzantineCandidate0(next_state.term, {}, self.server, self)
-        assert(False)
+        super(ByzantineBaseServer, self).on_timeout(context)
+        if self.state.__class__.__name__ in evil_map:
+            return evil_map[self.state.__class__.__name__].construct(self.state)
+        return self
+
+    def on_heartbeat_timeout(self) -> None:
+        super(ByzantineBaseServer, self).on_heartbeat_timeout()
+        if self.state.__class__.__name__ in evil_map:
+            return evil_map[self.state.__class__.__name__].construct(self.state)
+        return self
+
 
     def initial_state(self) -> State:
         type_to_class = [[ByzantineCandidate0, ByzantineVoter0]]

@@ -4,6 +4,11 @@ from .state import State
 
 
 class ByzantinePreLeader0(State):
+    @staticmethod
+    def construct(uncorrupted):
+        return ByzantinePreLeader0(uncorrupted.term, uncorrupted.election_proof, 
+                uncorrupted)
+
     def __init__(self, term: int,
                  election_proof: ElectedMessage,
                  copy_from: State) -> None:
