@@ -12,48 +12,70 @@ class VoteMessage(ServerMessage):
         self.a_cert = a_cert
 
     def verify(self, config: BaseConfig) -> bool:
-        return True  # TODO
+        if not isinstance(self.a_cert, ACert):
+            return False
+        if not self.a_cert.verify(config):
+            return False
+        return super(VoteMessage, self).verify(config)
 
     def update_hash(self, h) -> None:
-        # TODO
-        # super(, self).update_hash(h)
-        pass
+        if self.a_cert is not None:
+            h.update(self.a_cert.hash())
+        super(VoteMessage, self).update_hash(h)
 
 
-class VoteRequest(ServerMessage):
+class VotesListMessage(ServerMessage):
+    '''Base class for a message containing a list of votes.'''
+
+    def __init__(self, sender_id: int, term: int,
+                 votes: List[SignedMessage[VoteMessage]]) -> None:
+        super(VotesListMessage, self).__init__(sender_id, term)
+        self.votes = votes
+
+    def verify(self, config: BaseConfig) -> bool:
+        if not super(VotesListMessage, self).verify(config):
+            return False
+        seen_servers = set()  # type: ignore
+        for v in self.votes:
+            if not isinstance(v, SignedMessage):
+                return False
+            if not isinstance(v.message, VoteMessage):
+                return False
+            if not v.verify(config):
+                return False
+            if v.sender_id in seen_servers:
+                return False  # votes should be from distinct servers
+            seen_servers.add(v.sender_id)
+        return True
+
+    def update_hash(self, h) -> None:
+        for v in self.votes:
+            h.update(v.hash())
+        super(VotesListMessage, self).update_hash(h)
+
+
+class VoteRequest(VotesListMessage):
     '''Sent by a candidate to clients after receiving f + 1
     votes (i.e. at least 1 vote from a correct server).'''
 
-    def __init__(self, sender_id: int, term: int,
-                 votes: List[SignedMessage[VoteMessage]]) -> None:
-        super(VoteRequest, self).__init__(sender_id, term)
-        self.votes = votes
-
     def verify(self, config: BaseConfig) -> bool:
-        return True  # TODO
+        if not super(VoteRequest, self).verify(config):
+            return False
+        if not len(self.votes) >= config.f + 1:
+            return False
+        return True
 
-    def update_hash(self, h) -> None:
-        # TODO
-        # super(, self).update_hash(h)
-        pass
 
-
-class ElectedMessage(ServerMessage):
+class ElectedMessage(VotesListMessage):
     '''Sent by a new leader to prove its election. The votes
     list must contain >= 2f + 1 votes.'''
 
-    def __init__(self, sender_id: int, term: int,
-                 votes: List[SignedMessage[VoteMessage]]) -> None:
-        super(ElectedMessage, self).__init__(sender_id, term)
-        self.votes = votes
-
     def verify(self, config: BaseConfig) -> bool:
-        return True  # TODO
-
-    def update_hash(self, h) -> None:
-        # TODO
-        # super(, self).update_hash(h)
-        pass
+        if not super(ElectedMessage, self).verify(config):
+            return False
+        if not len(self.votes) >= config.quorum_size:
+            return False
+        return True
 
     def leader_commit_idx(self) -> Tuple[int, ACert]:
         '''Returns the commit index of the new leader based on the
@@ -91,9 +113,9 @@ class CatchupRequest(ServerMessage):
         return super(CatchupRequest, self).verify(config)
 
     def update_hash(self, h) -> None:
-        # TODO
-        # super(, self).update_hash(h)
-        pass
+        h.update(self.int_to_bytes(self.first_slot))
+        h.update(self.int_to_bytes(self.last_slot))
+        super(CatchupRequest, self).update_hash(h)
 
 
 class CatchupResponse(ServerMessage):
@@ -115,6 +137,7 @@ class CatchupResponse(ServerMessage):
         return super(CatchupResponse, self).verify(config)
 
     def update_hash(self, h) -> None:
-        # TODO
-        # super(, self).update_hash(h)
-        pass
+        h.update(self.int_to_bytes(self.first_slot))
+        for entry in self.entries:
+            h.update(entry.hash())
+        super(CatchupResponse, self).update_hash(h)
