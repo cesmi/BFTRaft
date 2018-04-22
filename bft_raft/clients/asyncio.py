@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from ..config import ClientConfig
 from ..messages import (ClientRequest, ClientRequestFailure, ClientResponse,
-                        Message, SignedMessage)
+                        ClientViewChangeRequest, Message, SignedMessage)
 from ..messengers.asyncio import AsyncIoMessenger
 from ..messengers.listener import MessengerListener
 from ..timeout_managers.asyncio import AsyncIoTimeoutManager
@@ -30,6 +30,9 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
 
         # Request that we have sent and are currently waiting on responses for
         self.active_request = None  # type: bytes
+
+        # Number of times we have timed out on the current request
+        self.num_request_timeouts = None  # type: int
 
         # Used to wait until we get f + 1 matching responses.
         self.responses_sem = None  # type: asyncio.Semaphore
@@ -96,7 +99,12 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
 
     def on_request_timeout(self, context: 'RequestTimeout') -> None:
         if self.active_request is not None and context.seqno == self.seqno:
-            self.config.double_timeout()
+            assert self.num_request_timeouts is not None
+            self.num_request_timeouts += 1
+            if self.num_request_timeouts % 2 == 0:
+                vc_request = ClientViewChangeRequest(self.config.client_id)
+                self.messenger.broadcast_server_message(vc_request)
+                self.config.double_timeout()
             self._send_request_msg()
 
     def start_server(self) -> None:
@@ -118,6 +126,7 @@ class AsyncIoClient(MessengerListener, TimeoutListener):
 
     async def _send_request(self, operation: bytes) -> bytes:
         self.active_request = operation
+        self.num_request_timeouts = 0
         self.responses_sem = asyncio.Semaphore(value=0, loop=self.loop)
         self._resend_request()
         await self.responses_sem.acquire()

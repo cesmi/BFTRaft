@@ -75,3 +75,11 @@ class ClientRequestFailure(Message):
         h.update(self.int_to_bytes(self.max_seqno))
         h.update(self.result)
         super(ClientRequestFailure, self).update_hash(h)
+
+
+class ClientViewChangeRequest(Message):
+    '''Sent by clients to request a view change when they suspect the primary
+    is faulty.'''
+
+    def __init__(self, sender_id: int) -> None:
+        super(ClientViewChangeRequest, self).__init__(sender_id, True)
