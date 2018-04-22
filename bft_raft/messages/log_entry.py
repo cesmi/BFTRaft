@@ -34,7 +34,17 @@ class LogEntry(Hashable):
         h.update(self.request.hash())
 
     def verify(self, config: BaseConfig) -> bool:
-        return True  # TODO
+        if not isinstance(self.term, int) or self.term < 0:
+            return False
+        if not isinstance(self.prev_incremental_hash, bytes):
+            return False
+        if not isinstance(self.request, SignedMessage):
+            return False
+        if not isinstance(self.request.message, ClientRequest):
+            return False
+        if not self.request.verify(config):
+            return False
+        return True
 
 
 def verify_entries(entries: List[LogEntry], config: BaseConfig) -> bool:
