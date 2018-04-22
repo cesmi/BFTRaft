@@ -10,26 +10,26 @@ class ByzantineVoter0(Voter):
     def __init__(self, term: int,
                  server: BaseServer,
                  copy_from: State) -> None:
-        super(ByzantineVoter0, self).__init__(term, self, copy_from)
+        super(ByzantineVoter0, self).__init__(term, server, copy_from)
 
     def send_vote(self):
-        pass
+        super(ByzantineVoter0, self).send_vote()
 
     def start(self):
-        pass
+        super(ByzantineVoter0, self).start()
 
     def on_append_entries_request(self, msg: AppendEntriesRequest,
                                   signed: SignedMessage[AppendEntriesRequest]) -> 'State':
-        pass
+        return super(ByzantineVoter0, self).on_append_entries_request(msg, signed)
 
     def on_append_entries_success(self, msg: AppendEntriesSuccess,
                                   signed: SignedMessage[AppendEntriesSuccess]) -> 'State':
-        pass
+        return super(ByzantineVoter0, self).on_append_entries_success(msg, signed)
 
     def on_commit(self, msg: CommitMessage,
                   signed: SignedMessage[CommitMessage]) -> 'State':
-        pass
+        return super(ByzantineVoter0, self).on_commit(msg, signed)
 
     def on_elected(self, msg: ElectedMessage,
                    signed: SignedMessage[ElectedMessage]) -> 'State':
-        pass
+        return super(ByzantineVoter0, self).on_elected(msg, signed)
