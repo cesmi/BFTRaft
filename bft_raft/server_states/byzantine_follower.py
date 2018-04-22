@@ -11,7 +11,6 @@ class ByzantineFollower0(Follower):
                  leader_a_cert: ACert, copy_from: State) -> None:
         super(ByzantineFollower0, self).__init__(term, leader_commit_idx, 
                 leader_a_cert, copy_from)
-        return self
 
     def on_append_entries_request(self, msg: AppendEntriesRequest,
                                   signed: SignedMessage[AppendEntriesRequest]) -> State:
@@ -24,4 +23,4 @@ class ByzantineFollower0(Follower):
         return super(ByzantineFollower0, self).on_heartbeat_timeout()
 
     def start(self) -> None:
-        return super(ByzantineFollower0, self).start()
+        super(ByzantineFollower0, self).start()
