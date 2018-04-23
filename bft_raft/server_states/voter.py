@@ -1,6 +1,6 @@
 from ..messages import (AppendEntriesRequest, AppendEntriesSuccess,
-                        CommitMessage, ElectedMessage, SignedMessage,
-                        VoteMessage)
+                        ClientViewChangeRequest, CommitMessage, ElectedMessage,
+                        SignedMessage, VoteMessage)
 from ..servers.base import BaseServer
 from .state import State
 
@@ -50,3 +50,9 @@ class Voter(State):
         leader_commit_idx, commit_idx_a_cert = msg.leader_commit_idx()
         return Follower(msg.term, leader_commit_idx,
                         commit_idx_a_cert, self)
+
+    def on_client_view_change_request(self, msg: ClientViewChangeRequest,
+                                      signed: SignedMessage[ClientViewChangeRequest]) -> 'State':
+        # ignore client view change requests; we will already increment view
+        # if candidate is not successfully elected within a timeout
+        return self

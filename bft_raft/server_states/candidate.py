@@ -1,6 +1,7 @@
 from typing import Dict
 
-from ..messages import ElectedMessage, SignedMessage, VoteMessage, VoteRequest
+from ..messages import (ClientViewChangeRequest, ElectedMessage, SignedMessage,
+                        VoteMessage, VoteRequest)
 from ..servers.base import BaseServer
 from .state import State
 
@@ -50,6 +51,12 @@ class Candidate(State):
         elif len(self.votes_for_term) == self.config.f + 1:
             self.config.log('Received f + 1 votes, sending vote req')
             self.send_vote_request()
+        return self
+
+    def on_client_view_change_request(self, msg: ClientViewChangeRequest,
+                                      signed: SignedMessage[ClientViewChangeRequest]) -> 'State':
+        # ignore client view change requests; we will already increment view
+        # if candidate is not successfully elected within a timeout
         return self
 
     def start(self):

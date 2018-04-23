@@ -3,10 +3,11 @@ from typing import Dict, List, Tuple, TypeVar  # pylint:disable=W0611
 
 from ..config import ServerConfig
 from ..messages import (ACert, AppendEntriesRequest,  # pylint:disable=W0611
-                        AppendEntriesSuccess, LogResend, CatchupRequest,
-                        CatchupResponse, CCert, ClientRequest, CommitMessage,
-                        ElectedMessage, ElectionProofRequest, LogEntry,
-                        Message, SignedMessage, VoteMessage, VoteRequest)
+                        AppendEntriesSuccess, CatchupRequest, CatchupResponse,
+                        CCert, ClientRequest, ClientViewChangeRequest,
+                        CommitMessage, ElectedMessage, ElectionProofRequest,
+                        LogEntry, LogResend, Message, SignedMessage,
+                        VoteMessage, VoteRequest)
 
 if False:  # pylint:disable=W0125
     # (just for type checking; if statement avoids circular import)
@@ -75,6 +76,8 @@ class State(object):
             return self.on_catchup_request(msg, signed)
         elif isinstance(msg, CatchupResponse):
             return self.on_catchup_response(msg, signed)
+        elif isinstance(msg, ClientViewChangeRequest):
+            return self.on_client_view_change_request(msg, signed)
         else:
             assert False, 'unhandled message type %s' % msg.__class__.__name__
 
@@ -164,6 +167,10 @@ class State(object):
                             signed: SignedMessage[CatchupResponse]) -> 'State':
         return self
 
+    def on_client_view_change_request(self, msg: ClientViewChangeRequest,
+                                      signed: SignedMessage[ClientViewChangeRequest]) -> 'State':
+        return self.increment_term()
+
     def on_timeout(self, context: object) -> 'State':
         '''Returns resulting state.'''
         return self
@@ -181,8 +188,8 @@ class State(object):
             return new_state
         else:
             # become a voter
-            new_state = Voter(next_term, self.server, self)
-            new_state.send_vote()
+            new_state = Voter(next_term, self.server, self)  # type: ignore
+            new_state.send_vote()  # type: ignore
             return new_state
 
     def _request_election_proof(self, term) -> None:
