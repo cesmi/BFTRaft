@@ -16,7 +16,10 @@ class Voter(State):
                            self.term, self.latest_a_cert)
         self.server.messenger.send_server_message(
             self.term % self.config.num_servers, vote)
-        # TODO: set a timeout here
+        self.server.timeout_manager.set_timeout(
+            self.config.tiemout / 2, ResendVoteTimeout(self.term))
+        self.server.timeout_manager.set_timeout(
+            self.config.timeout, GiveUpTimeout(self.term))
 
     def start(self):
         '''A server initially in the Voter state sends a vote to the primary.'''
@@ -56,3 +59,23 @@ class Voter(State):
         # ignore client view change requests; we will already increment view
         # if candidate is not successfully elected within a timeout
         return self
+
+    def on_timeout(self, context: object):
+        if isinstance(context, ResendVoteTimeout) and context.term == self.term:
+            self.send_vote()
+            return self
+        elif isinstance(context, GiveUpTimeout) and context.term == self.term:
+            self.config.double_timeout()
+            return self.increment_term()
+        else:
+            return super(Voter, self).on_timeout(context)
+
+
+class ResendVoteTimeout(object):
+    def __init__(self, term: int) -> None:
+        self.term = term
+
+
+class GiveUpTimeout(object):
+    def __init__(self, term: int) -> None:
+        self.term = term
