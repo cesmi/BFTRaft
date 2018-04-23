@@ -70,9 +70,6 @@ class NormalOperationBase(State):
     def on_timeout(self, context: object) -> State:
         return self
 
-    def start(self) -> None:
-        raise NotImplementedError
-
     def _add_append_entries_success(self, msg: AppendEntriesSuccess,
                                     signed: SignedMessage[AppendEntriesSuccess]) -> None:
         '''Adds msg to append_entries_success if its slot number is greater

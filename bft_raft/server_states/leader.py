@@ -1,6 +1,7 @@
-from ..messages import (AppendEntriesRequest, AppendEntriesSuccess, LogResend,
-                        ClientRequest, ElectedMessage, ElectionProofRequest,
-                        LogEntry, SignedMessage)
+from ..messages import (AppendEntriesRequest, AppendEntriesSuccess,
+                        ClientRequest, ElectedMessage,
+                        ElectionProofRequest, LogEntry, LogResend,
+                        SignedMessage)
 from .normal_operation_base import NormalOperationBase
 from .state import State
 

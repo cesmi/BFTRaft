@@ -161,7 +161,7 @@ class State(object):
 
     def on_client_view_change_request(self, msg: ClientViewChangeRequest,
                                       signed: SignedMessage[ClientViewChangeRequest]) -> 'State':
-        return self.increment_term()
+        return self
 
     def on_timeout(self, context: object) -> 'State':
         '''Returns resulting state.'''

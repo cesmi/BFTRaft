@@ -54,12 +54,6 @@ class Candidate(State):
             self._send_vote_request()
         return self
 
-    def on_client_view_change_request(self, msg: ClientViewChangeRequest,
-                                      signed: SignedMessage[ClientViewChangeRequest]) -> 'State':
-        # ignore client view change requests; we will already increment view
-        # if candidate is not successfully elected within a timeout
-        return self
-
     def on_timeout(self, context: object) -> State:
         if isinstance(context, GiveUpTimeout) and context.term == self.term:
             return self.increment_term()

@@ -1,6 +1,6 @@
 import time
 from ..messages import (ACert, AppendEntriesRequest, AppendEntriesSuccess,
-                        SignedMessage)
+                        SignedMessage, ClientViewChangeRequest)
 from .normal_operation_base import NormalOperationBase
 from .state import State
 
@@ -24,7 +24,7 @@ class Follower(NormalOperationBase):
             if msg.term > self.term:
                 self._request_election_proof(msg.term)
             return self
-        if msg.sender_id % self.config.num_servers != msg.term:
+        if msg.term % self.config.num_servers != msg.sender_id:
             return self
 
         # If no entries sent, this is a heartbeat
@@ -87,6 +87,10 @@ class Follower(NormalOperationBase):
         if self.log:
             self.latest_slot_for_current_term = len(self.log) - 1
         return self
+
+    def on_client_view_change_request(self, msg: ClientViewChangeRequest,
+                                      signed: SignedMessage[ClientViewChangeRequest]) -> 'State':
+        return self.increment_term()
 
     def on_timeout(self, context: object) -> State:
         if isinstance(context, FollowerHeartbeatTimeout):
