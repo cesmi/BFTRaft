@@ -17,7 +17,7 @@ class Voter(State):
         self.server.messenger.send_server_message(
             self.term % self.config.num_servers, vote)
         self.server.timeout_manager.set_timeout(
-            self.config.tiemout / 2, ResendVoteTimeout(self.term))
+            self.config.timeout / 2, ResendVoteTimeout(self.term))
         self.server.timeout_manager.set_timeout(
             self.config.timeout, GiveUpTimeout(self.term))
 
