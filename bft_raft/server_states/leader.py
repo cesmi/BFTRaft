@@ -70,9 +70,6 @@ class Leader(NormalOperationBase):
         self._send_heartbeat()
         return self
 
-    def start(self):
-        assert False  # A server is never in this state initially
-
     def _send_heartbeat(self):
         self.server.timeout_manager.set_timeout(
             self.config.timeout / 2, LeaderHeartbeatTimeout())

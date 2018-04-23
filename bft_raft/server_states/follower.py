@@ -102,9 +102,6 @@ class Follower(NormalOperationBase):
                 self.config.timeout, FollowerHeartbeatTimeout())
             return self
 
-    def start(self) -> None:
-        assert False  # A node is never in this state initially
-
 
 class FollowerHeartbeatTimeout(object):
     pass

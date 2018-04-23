@@ -48,10 +48,6 @@ class State(object):
                 if t <= self.term:
                     del self.votes[t]
 
-    def start(self):
-        '''Performs any actions a server in this state should perform on startup.'''
-        raise NotImplementedError
-
     def on_message(self, msg: Message, signed: SignedMessage) -> 'State':
         '''Invokes the appropriate callback for msg. Returns resulting state.'''
         if isinstance(msg, AppendEntriesRequest):
@@ -123,9 +119,7 @@ class State(object):
         # request to all other replicas
         if len(self.votes[msg.term]) >= self.config.f:
             assert self.config.server_id not in self.votes[msg.term]
-            new_state = Candidate(msg.term, self.votes[msg.term], self.server, self)
-            new_state.send_vote_request()
-            return new_state
+            return Candidate(msg.term, self.votes[msg.term], self.server, self)
         return self
 
     def on_vote_request(self, msg: VoteRequest,
@@ -135,9 +129,7 @@ class State(object):
         # Send a vote if request is for a future term.
         if msg.term <= self.term:
             return self
-        new_state = Voter(msg.term, self.server, self)
-        new_state.send_vote()
-        return new_state
+        return Voter(msg.term, self.server, self)
 
     def on_elected(self, msg: ElectedMessage,
                    signed: SignedMessage[ElectedMessage]) -> 'State':
@@ -184,13 +176,10 @@ class State(object):
         next_term = self.term + 1
         if next_term % self.config.num_servers == self.config.server_id:
             # we are leader in the next term, so become a Candidate
-            new_state = Candidate(next_term, {}, self.server, self)
-            return new_state
+            return Candidate(next_term, {}, self.server, self)
         else:
             # become a voter
-            new_state = Voter(next_term, self.server, self)  # type: ignore
-            new_state.send_vote()  # type: ignore
-            return new_state
+            return Voter(next_term, self.server, self)  # type: ignore
 
     def _request_election_proof(self, term) -> None:
         primary = term % self.config.num_servers

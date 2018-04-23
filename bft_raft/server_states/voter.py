@@ -10,20 +10,9 @@ class Voter(State):
                  server: BaseServer,
                  copy_from: State) -> None:
         super(Voter, self).__init__(server, copy_from, term)
-
-    def send_vote(self):
-        vote = VoteMessage(self.config.server_id,
-                           self.term, self.latest_a_cert)
-        self.server.messenger.send_server_message(
-            self.term % self.config.num_servers, vote)
-        self.server.timeout_manager.set_timeout(
-            self.config.timeout / 2, ResendVoteTimeout(self.term))
+        self._send_vote()
         self.server.timeout_manager.set_timeout(
             self.config.timeout, GiveUpTimeout(self.term))
-
-    def start(self):
-        '''A server initially in the Voter state sends a vote to the primary.'''
-        self.send_vote()
 
     def on_append_entries_request(self, msg: AppendEntriesRequest,
                                   signed: SignedMessage[AppendEntriesRequest]) -> 'State':
@@ -62,13 +51,21 @@ class Voter(State):
 
     def on_timeout(self, context: object):
         if isinstance(context, ResendVoteTimeout) and context.term == self.term:
-            self.send_vote()
+            self._send_vote()
             return self
         elif isinstance(context, GiveUpTimeout) and context.term == self.term:
             self.config.double_timeout()
             return self.increment_term()
         else:
             return super(Voter, self).on_timeout(context)
+
+    def _send_vote(self):
+        vote = VoteMessage(self.config.server_id,
+                           self.term, self.latest_a_cert)
+        self.server.messenger.send_server_message(
+            self.term % self.config.num_servers, vote)
+        self.server.timeout_manager.set_timeout(
+            self.config.timeout / 2, ResendVoteTimeout(self.term))
 
 
 class ResendVoteTimeout(object):

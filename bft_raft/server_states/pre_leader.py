@@ -60,6 +60,3 @@ class PreLeader(State):
         self.server.messenger.send_server_message(
             msg.sender_id, self.election_proof)
         return self
-
-    def start(self):
-        assert False  # A server is never in this state initially

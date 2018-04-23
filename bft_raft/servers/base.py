@@ -18,7 +18,6 @@ class BaseServer(MessengerListener, TimeoutListener):
         messenger.add_listener(self)
         timeout_manager.add_listener(self)
         self.state = self.initial_state()
-        self.state.start()
 
     def on_message(self, msg: Message, signed: SignedMessage) -> None:
         self.state = self.state.on_message(msg, signed)
