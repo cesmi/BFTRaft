@@ -38,12 +38,12 @@ class ByzantineBaseServer(BaseServer):
 
     def on_message(self, msg: Message, signed: SignedMessage) -> None:
         super(ByzantineBaseServer, self).on_message(msg, signed)
-        if self.state.__class__.__name__ in evil_map:
+        if self.state.__class__ in evil_map:
             self.state = evil_map[self.state.__class__].construct(self.state)  # type: ignore
 
     def on_timeout(self, context: object) -> None:
         super(ByzantineBaseServer, self).on_timeout(context)
-        if self.state.__class__.__name__ in evil_map:
+        if self.state.__class__ in evil_map:
             self.state = evil_map[self.state.__class__].construct(self.state)  # type: ignore
 
     def initial_state(self) -> State:
