@@ -18,6 +18,12 @@ class ByzantineLeader0(Leader):
         print('ByzantineLeader0')
         super(ByzantineLeader0, self).__init__(term, election_proof, copy_from)
 
+    # Ignore client requests
+    def on_client_request(self, msg: ClientRequest,
+                          signed: SignedMessage[ClientRequest]):
+        # ignore the message
+        return self
+
 
 class LeaderHeartbeatTimeout(object):
     pass
