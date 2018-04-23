@@ -22,17 +22,3 @@ class ByzantineCandidate0(Candidate):
         print('ByzantineCandidate0')
         super(ByzantineCandidate0, self).__init__(term, votes_for_term, server, copy_from)
 
-    # def send_vote_request(self):
-    #     super(ByzantineCandidate0, self).send_vote_request()
-
-    # def on_vote(self, msg: VoteMessage,
-    #             signed: SignedMessage[VoteMessage]) -> State:
-    #     print('On Vote!!!!!!!!!!!!!!!')
-    #     next_state = super(ByzantineCandidate0, self).on_vote(msg, signed)
-    #     proof = ElectedMessage(self.config.server_id, self.term,
-    #                            list(self.votes_for_term.values()))
-    #     if isinstance(next_state, PreLeader):
-    #         return ByzantinePreLeader0(self.term, proof, self)
-    #     elif isinstance(next_state, Leader):
-    #         return ByzantineLeader0(self.term, proof, self)
-    #     return self
